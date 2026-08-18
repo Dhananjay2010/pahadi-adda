@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { fetchGeo, placeLabel } from "@/lib/geo";
 
@@ -83,9 +83,13 @@ export function usePresence() {
     };
   }, []);
 
-  function dismissJoinEvent(key: string) {
+  // Stable identity — Toast's auto-dismiss effect depends on this, and
+  // PahadiAdda re-renders every ~500ms from the playback progress tick, so a
+  // fresh function reference each render would keep re-triggering that
+  // effect and reset the dismiss timer before it ever fires.
+  const dismissJoinEvent = useCallback((key: string) => {
     setJoinEvents((prev) => prev.filter((e) => e.key !== key));
-  }
+  }, []);
 
   return { onlineCount, joinEvents, dismissJoinEvent };
 }

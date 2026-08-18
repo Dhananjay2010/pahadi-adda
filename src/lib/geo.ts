@@ -4,7 +4,7 @@ export function placeLabel(geo: Geo): string {
   if (geo.city) return geo.city;
   if (geo.region) return geo.region;
   if (geo.country) return geo.country;
-  return "पहाड़ों से";
+  return "पहाड़ों";
 }
 
 /** Coarse city/region for this visitor — see src/app/api/geo/route.ts. */
