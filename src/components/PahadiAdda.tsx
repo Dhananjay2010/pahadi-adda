@@ -14,9 +14,6 @@ import { useScene } from "@/hooks/useScene";
 import { useParallax } from "@/hooks/useParallax";
 import { PLAYLIST, scheduleFromEpoch } from "@/lib/playlist";
 
-const RESYNC_EVERY_MS = 45_000;
-const DRIFT_TOLERANCE_S = 4;
-
 function fmt(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   const m = Math.floor(s / 60);
@@ -40,7 +37,6 @@ export default function PahadiAdda() {
   const [durations, setDurations] = useState<Record<string, number>>({});
 
   const currentIndexRef = useRef(initial.index);
-  const manualRef = useRef(false);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const durationsRef = useRef<Record<string, number>>({});
 
@@ -76,29 +72,18 @@ export default function PahadiAdda() {
     }
   }, []);
 
+  // A track always plays to its own real end and advances to the next one
+  // in order, at its start — never mid-song. There used to be a periodic
+  // "resync" here that re-picked the track from the shared schedule every
+  // 45s using duration *estimates*, which is exactly what caused songs to
+  // cut short or restart mid-track: the estimate for whichever song hadn't
+  // been learned yet was often wrong enough to look, from the schedule's
+  // math, like time had already run out on it. The schedule is still used
+  // once, to pick where a fresh visitor's player starts — after that,
+  // playback just runs forward like a normal playlist.
   const handleEnd = useCallback(() => {
-    if (manualRef.current) {
-      const next = (currentIndexRef.current + 1) % PLAYLIST.length;
-      goToTrack(next, 0);
-    } else {
-      const s = scheduleFromEpoch(durationsRef.current);
-      goToTrack(s.index, s.offset);
-    }
-  }, [goToTrack]);
-
-  // periodic resync for passive (non-manual) listeners
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (manualRef.current || !playerRef.current) return;
-      const s = scheduleFromEpoch(durationsRef.current);
-      const playerTime = playerRef.current.getCurrentTime?.() ?? 0;
-      const sameTrack = s.index === currentIndexRef.current;
-      const drift = Math.abs(s.offset - playerTime);
-      if (!sameTrack || drift > DRIFT_TOLERANCE_S) {
-        goToTrack(s.index, s.offset);
-      }
-    }, RESYNC_EVERY_MS);
-    return () => clearInterval(id);
+    const next = (currentIndexRef.current + 1) % PLAYLIST.length;
+    goToTrack(next, 0);
   }, [goToTrack]);
 
   // progress bar tick
@@ -126,13 +111,11 @@ export default function PahadiAdda() {
   }, []);
 
   function handlePrev() {
-    manualRef.current = true;
     goToTrack((currentIndexRef.current - 1 + PLAYLIST.length) % PLAYLIST.length, 0);
     playerRef.current?.playVideo();
   }
 
   function handleNext() {
-    manualRef.current = true;
     goToTrack((currentIndexRef.current + 1) % PLAYLIST.length, 0);
     playerRef.current?.playVideo();
   }
@@ -147,7 +130,6 @@ export default function PahadiAdda() {
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     const offset = pct * trackDuration;
-    manualRef.current = true;
     playerRef.current?.seekTo(offset, true);
     setElapsed(offset);
   }
@@ -160,7 +142,6 @@ export default function PahadiAdda() {
   }
 
   function handleSelectTrack(index: number) {
-    manualRef.current = true;
     goToTrack(index, 0);
     playerRef.current?.playVideo();
     setPlaylistOpen(false);
