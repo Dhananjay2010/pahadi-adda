@@ -103,6 +103,12 @@ const SCENE_SVG = `
     <circle cx="1120" cy="605" r="4.5" fill="#ffd27a"/>
   </g>
 
+  <circle class="ripple" cx="260" cy="620" style="animation-delay:0s"/>
+  <circle class="ripple" cx="420" cy="660" style="animation-delay:1.1s"/>
+  <circle class="ripple" cx="640" cy="600" style="animation-delay:2.2s"/>
+  <circle class="ripple" cx="900" cy="650" style="animation-delay:.6s"/>
+  <circle class="ripple" cx="1120" cy="605" style="animation-delay:1.8s"/>
+
   <rect x="0" y="0" width="1600" height="900" fill="url(#gg-vignette)"/>
 </svg>
 `;

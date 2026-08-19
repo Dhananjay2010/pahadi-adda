@@ -34,6 +34,8 @@ export default function PahadiAdda() {
   const [volume, setVolume] = useState(85);
   const [muted, setMuted] = useState(false);
   const [shareNotice, setShareNotice] = useState(false);
+  const [trackToast, setTrackToast] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(false);
   // Real (player-reported) durations, once known, in place of the shipped
   // estimates — kept in state so the render below can read it safely, and
   // mirrored into a ref so the timers/callbacks further down (which run
@@ -89,7 +91,16 @@ export default function PahadiAdda() {
   const handleEnd = useCallback(() => {
     const next = (currentIndexRef.current + 1) % PLAYLIST.length;
     goToTrack(next, 0);
+    // Only on auto-advance, not on a manual prev/next/select — if you
+    // picked a track yourself you already know it changed.
+    setTrackToast(PLAYLIST[next].dev);
   }, [goToTrack]);
+
+  useEffect(() => {
+    if (!trackToast) return;
+    const t = setTimeout(() => setTrackToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [trackToast]);
 
   // progress bar tick
   useEffect(() => {
@@ -125,21 +136,41 @@ export default function PahadiAdda() {
         : "Pahadi Adda";
   }, [onlineCount]);
 
-  function handlePrev() {
+  // First-visit hint — the whole point of this site (everyone hears the
+  // same song live) is invisible unless you already know it, so say so
+  // once, then never again.
+  useEffect(() => {
+    if (localStorage.getItem("pahadi-adda-seen-hint")) return;
+    const showTimer = setTimeout(() => setShowHint(true), 1200);
+    return () => clearTimeout(showTimer);
+  }, []);
+
+  const dismissHint = useCallback(() => {
+    setShowHint(false);
+    localStorage.setItem("pahadi-adda-seen-hint", "1");
+  }, []);
+
+  useEffect(() => {
+    if (!showHint) return;
+    const t = setTimeout(dismissHint, 8000);
+    return () => clearTimeout(t);
+  }, [showHint, dismissHint]);
+
+  const handlePrev = useCallback(() => {
     goToTrack((currentIndexRef.current - 1 + PLAYLIST.length) % PLAYLIST.length, 0);
     playerRef.current?.playVideo();
-  }
+  }, [goToTrack]);
 
-  function handleNext() {
+  const handleNext = useCallback(() => {
     goToTrack((currentIndexRef.current + 1) % PLAYLIST.length, 0);
     playerRef.current?.playVideo();
-  }
+  }, [goToTrack]);
 
-  function handlePlayPause() {
+  const handlePlayPause = useCallback(() => {
     if (!playerRef.current) return;
     if (isPlaying) playerRef.current.pauseVideo();
     else playerRef.current.playVideo();
-  }
+  }, [isPlaying]);
 
   function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -149,12 +180,12 @@ export default function PahadiAdda() {
     setElapsed(offset);
   }
 
-  function handleStart() {
+  const handleStart = useCallback(() => {
     playerRef.current?.unMute();
     playerRef.current?.setVolume(volume);
     playerRef.current?.playVideo();
     setStarted(true);
-  }
+  }, [volume]);
 
   function handleSelectTrack(index: number) {
     goToTrack(index, 0);
@@ -172,7 +203,7 @@ export default function PahadiAdda() {
     }
   }
 
-  function handleToggleMute() {
+  const handleToggleMute = useCallback(() => {
     if (!playerRef.current) return;
     if (muted) {
       playerRef.current.unMute();
@@ -181,7 +212,37 @@ export default function PahadiAdda() {
       playerRef.current.mute();
       setMuted(true);
     }
-  }
+  }, [muted]);
+
+  // Keyboard shortcuts — space to play/pause (or start, before the first
+  // click), arrows for prev/next, m to mute. Ignored while typing in the
+  // chat/nickname inputs so those keys behave normally there.
+  useEffect(() => {
+    function isTypingTarget(target: EventTarget | null) {
+      return (
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      );
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (!started) handleStart();
+        else handlePlayPause();
+      } else if (!started) {
+        return;
+      } else if (e.key === "ArrowRight") {
+        handleNext();
+      } else if (e.key === "ArrowLeft") {
+        handlePrev();
+      } else if (e.key === "m" || e.key === "M") {
+        handleToggleMute();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [started, handleStart, handlePlayPause, handleNext, handlePrev, handleToggleMute]);
 
   async function handleShare() {
     const text =
@@ -232,6 +293,14 @@ export default function PahadiAdda() {
             </div>
           )}
           <SceneSwitcher activeId={sceneId} onChange={setSceneId} />
+          {showHint && (
+            <div className="hint-bubble">
+              <span>यहाँ सब एक साथ, लाइव एक ही गीत सुन रहे हैं 🎧</span>
+              <button onClick={dismissHint} aria-label="समझ गया, बंद करें">
+                ✕
+              </button>
+            </div>
+          )}
         </div>
         <div className="topbar-actions">
           <div style={{ position: "relative" }}>
@@ -257,6 +326,13 @@ export default function PahadiAdda() {
         <h1 className="plaque-title">पहाड़ी अड्डा</h1>
         <div className="plaque-sub">Pahadi Adda &middot; लगातार पहाड़ी गीत</div>
       </div>
+
+      {trackToast && (
+        <div className="track-toast" key={trackToast}>
+          <span className="track-toast-dot" />
+          अब बज रहा है: <b>{trackToast}</b>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-row">

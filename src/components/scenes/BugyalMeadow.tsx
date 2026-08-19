@@ -27,9 +27,11 @@ const SCENE_SVG = `
   </defs>
 
   <rect x="0" y="0" width="1600" height="900" fill="url(#bm-sky)"/>
-  <g fill="#ffffff" opacity="0.85">
+  <g class="cloud-drift" fill="#ffffff" opacity="0.85" style="animation-duration:52s">
     <ellipse cx="240" cy="150" rx="66" ry="16"/>
     <ellipse cx="310" cy="136" rx="42" ry="11"/>
+  </g>
+  <g class="cloud-drift" fill="#ffffff" opacity="0.85" style="animation-duration:38s;animation-delay:-12s">
     <ellipse cx="1340" cy="120" rx="72" ry="16"/>
     <ellipse cx="1270" cy="140" rx="40" ry="10"/>
   </g>

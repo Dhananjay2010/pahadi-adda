@@ -178,6 +178,36 @@ body {
   transform-origin: bottom center;
 }
 
+@keyframes ripple-out {
+  0% {
+    r: 3;
+    opacity: 0.45;
+  }
+  100% {
+    r: 46;
+    opacity: 0;
+  }
+}
+.stage .ripple {
+  animation: ripple-out 3.6s ease-out infinite;
+  fill: none;
+  stroke: #f0c48a;
+  stroke-width: 1.5;
+}
+
+@keyframes cloud-drift {
+  0%,
+  100% {
+    transform: translateX(-24px);
+  }
+  50% {
+    transform: translateX(24px);
+  }
+}
+.stage .cloud-drift {
+  animation: cloud-drift 46s ease-in-out infinite;
+}
+
 /* ---------- top bar ---------- */
 .topbar {
   position: absolute;
@@ -618,6 +648,67 @@ body {
   border-color: var(--text-warm);
   transform: scale(1.25);
 }
+.hint-bubble {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  max-width: 270px;
+  padding: 9px 10px 9px 13px;
+  border-radius: 12px;
+  background: rgba(16, 10, 8, 0.72);
+  border: 1px solid rgba(237, 169, 58, 0.4);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-warm);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  animation: toast-in 0.3s ease;
+}
+.hint-bubble button {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+}
+
+.track-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 210px;
+  transform: translateX(-50%);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(16, 10, 8, 0.72);
+  border: 1px solid rgba(245, 236, 219, 0.16);
+  backdrop-filter: blur(8px);
+  font-size: 12.5px;
+  color: var(--text-warm);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  animation: toast-in 0.25s ease;
+  white-space: nowrap;
+  max-width: 90vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.track-toast b {
+  color: var(--marigold);
+}
+.track-toast-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--marigold);
+  flex: none;
+}
+
 .scene-current-label {
   margin-top: 6px;
   font-size: 11px;
@@ -1093,7 +1184,10 @@ body {
   .chat-panel,
   .playlist-panel,
   .sparkle-mote,
-  .reaction-emoji {
+  .reaction-emoji,
+  .ripple,
+  .cloud-drift,
+  .track-toast {
     animation: none !important;
   }
   .scene-layer,
