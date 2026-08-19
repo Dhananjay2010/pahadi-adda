@@ -43,6 +43,18 @@ someone new joins, and can chat with whoever else is around.
   what you send in a chat message; it's otherwise read per-request. Locally
   (or off Vercel) this returns nothing and falls back to a generic
   "पहाड़ों से".
+- **Reactions** — a 🪔 button next to the transport controls broadcasts a
+  floating diya to everyone currently on the site via Supabase Realtime
+  Broadcast (`src/hooks/usePresence.ts`, `src/components/ReactionBursts.tsx`).
+  Ephemeral — nothing is stored, it's just a shared "someone's here" ping.
+- **Song requests** — an "अनुरोध करें" button next to each track in the
+  playlist panel lets anyone nudge what plays next; counts are tallied over
+  a rolling 6-hour window from the `song_requests` table
+  (`src/hooks/useSongRequests.ts`). Purely informational — it never touches
+  the shared playback schedule.
+- **Share** — the "शेयर करें" button in the top bar uses the Web Share API
+  (falling back to copying a link) so visitors can invite others in; the
+  live online count is also mirrored into the browser tab's title.
 
 ## Setup
 
@@ -127,21 +139,28 @@ src/
     api/geo/route.ts       coarse geo lookup for join toasts + chat
     layout.tsx              fonts + metadata
     globals.css               all styling
+    opengraph-image.tsx        generated social share card (og:image)
+    twitter-image.tsx           re-exports opengraph-image.tsx for Twitter
   components/
     PahadiAdda.tsx           main client component: playback, controls, layout
     scenes/                   the five illustrated backgrounds + registry
-    SceneSwitcher.tsx          background picker (top-left dots)
+    SceneSwitcher.tsx          background picker (top-left dots) + current label
     AmbientParticles.tsx        drifting ember/firefly atmosphere
+    ReactionBursts.tsx           floating diya reactions
     JoinToasts.tsx               toast notifications
     ChatPanel.tsx                 floating chat panel
+    PlaylistPanel.tsx              full song list + request-to-play buttons
   hooks/
-    usePresence.ts             Supabase Realtime presence (online count, joins)
+    usePresence.ts             Supabase Realtime presence (online count, joins, reactions)
     useChat.ts                   Supabase-backed chat (history + realtime)
+    useSongRequests.ts            Supabase-backed "request this song" tally
     useScene.ts                   remembers the chosen background scene
   lib/
     playlist.ts                 curated song list + shared-schedule math
     geo.ts                        shared geo-lookup helper (presence + chat)
     supabase.ts                    Supabase client
+  assets/
+    fonts/                       Devanagari font bundled for the og:image route
 supabase/
-  schema.sql                    run once in the Supabase SQL Editor (chat table)
+  schema.sql                    run once in the Supabase SQL Editor (chat + song request tables)
 ```

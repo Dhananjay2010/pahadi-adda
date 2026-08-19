@@ -41,6 +41,7 @@ export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [cooldown, setCooldown] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const placeRef = useRef<string>("");
 
   useEffect(() => {
@@ -82,18 +83,28 @@ export function useChat() {
   }, []);
 
   const sendMessage = useCallback(async (content: string, author: string) => {
-    if (!supabase) return;
+    if (!supabase) return false;
     const trimmed = content.trim().slice(0, MAX_LENGTH);
-    if (!trimmed) return;
+    if (!trimmed) return false;
 
     setCooldown(true);
     setTimeout(() => setCooldown(false), SEND_COOLDOWN_MS);
 
-    await supabase.from(TABLE).insert({
+    // .insert() resolves with { error } instead of throwing on a Postgres
+    // rejection (RLS, constraint, etc.) — without checking it, a failed
+    // send looks identical to a successful one: no error, no message.
+    const { error: insertError } = await supabase.from(TABLE).insert({
       author: author.trim().slice(0, 30) || "पहाड़ी",
       place: placeRef.current || null,
       content: trimmed,
     });
+
+    if (insertError) {
+      setError(insertError.message);
+      return false;
+    }
+    setError(null);
+    return true;
   }, []);
 
   return {
@@ -102,5 +113,6 @@ export function useChat() {
     canSend: !!supabase && !cooldown,
     configured: !!supabase,
     sendMessage,
+    error,
   };
 }

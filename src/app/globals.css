@@ -181,9 +181,9 @@ body {
 /* ---------- top bar ---------- */
 .topbar {
   position: absolute;
-  top: 22px;
-  left: 24px;
-  right: 24px;
+  top: max(22px, env(safe-area-inset-top, 0px));
+  left: max(24px, env(safe-area-inset-left, 0px));
+  right: max(24px, env(safe-area-inset-right, 0px));
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -250,6 +250,56 @@ body {
   flex: none;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sharelink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: rgba(16, 10, 8, 0.5);
+  border: 1px solid rgba(245, 236, 219, 0.18);
+  backdrop-filter: blur(6px);
+  color: var(--text-warm);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.sharelink:hover {
+  background: rgba(237, 169, 58, 0.16);
+  border-color: rgba(237, 169, 58, 0.5);
+  transform: translateY(-1px);
+}
+.sharelink svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.share-toast {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(16, 10, 8, 0.85);
+  border: 1px solid rgba(245, 236, 219, 0.18);
+  font-size: 11.5px;
+  color: var(--text-warm);
+  white-space: nowrap;
+  animation: toast-in 0.2s ease;
+}
+
 /* ---------- title plaque ---------- */
 .plaque-wrap {
   position: absolute;
@@ -293,7 +343,7 @@ body {
 .card {
   position: absolute;
   left: 50%;
-  bottom: 26px;
+  bottom: max(26px, env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 6;
   width: min(92vw, 430px);
@@ -400,8 +450,34 @@ body {
 .controls {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.controls-transport {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 14px;
+  flex: 1;
+}
+.controls-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.reaction-btn,
+.mute-btn {
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+}
+.volume-slider {
+  width: 56px;
+  height: 3px;
+  accent-color: var(--marigold);
+  cursor: pointer;
 }
 .ctrl-btn {
   background: none;
@@ -542,6 +618,14 @@ body {
   border-color: var(--text-warm);
   transform: scale(1.25);
 }
+.scene-current-label {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  animation: meta-in 0.3s ease both;
+}
 
 /* ---------- ambient particles ---------- */
 .particles {
@@ -605,6 +689,37 @@ body {
   }
   100% {
     transform: rotate(var(--angle)) translateX(26px) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* ---------- reactions ---------- */
+.reaction-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+.reaction-emoji {
+  position: absolute;
+  bottom: 200px;
+  font-size: 26px;
+  transform: translateX(-50%);
+  animation: reaction-rise 2.2s ease-out forwards;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+@keyframes reaction-rise {
+  0% {
+    transform: translateX(-50%) translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px) scale(1);
+  }
+  100% {
+    transform: translateX(-50%) translateY(-220px) scale(1.05);
     opacity: 0;
   }
 }
@@ -791,6 +906,11 @@ body {
   font-size: 12px;
   padding: 5px 8px;
 }
+.chat-error {
+  padding: 0 14px 6px;
+  font-size: 11px;
+  color: #e8836f;
+}
 .chat-input-row {
   display: flex;
   gap: 8px;
@@ -864,10 +984,6 @@ body {
   gap: 10px;
   padding: 8px;
   border-radius: 10px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
   color: var(--text-warm);
   transition: background 0.15s ease;
 }
@@ -876,6 +992,21 @@ body {
 }
 .playlist-item.active {
   background: rgba(237, 169, 58, 0.14);
+}
+.playlist-item-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 .playlist-item-num {
   flex: none;
@@ -918,6 +1049,38 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.playlist-item-request {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.playlist-item-request:hover {
+  background: rgba(237, 169, 58, 0.16);
+  border-color: rgba(237, 169, 58, 0.4);
+}
+.playlist-item-request.voted {
+  background: rgba(237, 169, 58, 0.22);
+  border-color: rgba(237, 169, 58, 0.55);
+  color: var(--marigold);
+}
+.playlist-item-request svg {
+  width: 12px;
+  height: 12px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .star,
@@ -929,7 +1092,8 @@ body {
   .play-btn.is-playing,
   .chat-panel,
   .playlist-panel,
-  .sparkle-mote {
+  .sparkle-mote,
+  .reaction-emoji {
     animation: none !important;
   }
   .scene-layer,
@@ -939,13 +1103,27 @@ body {
 }
 
 @media (max-width: 480px) {
+  /* Shrink + raise the hero so the player card lands inside the first
+     screenful instead of past a long stretch of empty scenery, and so it
+     clears the browser chrome/home-indicator at the bottom. */
   .plaque-title {
-    font-size: 44px;
+    font-size: 32px;
   }
   .plaque-wrap {
-    top: 14%;
+    top: max(12%, env(safe-area-inset-top, 0px));
+    padding: 0 12px;
   }
-  .ytlink span {
+  .card {
+    bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 14px);
+  }
+  .plaque-sub {
+    margin-top: 5px;
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+  .ytlink span,
+  .sharelink span {
     display: none;
   }
   .toast-stack {
@@ -962,7 +1140,22 @@ body {
     left: 10px;
     width: auto;
   }
+
+  /* The chat button used to sit bottom-right, right on top of the player
+     card's corner and its controls. Move it up under the YouTube link so
+     the bottom edge is left to the card alone. */
   .chat-fab {
-    right: 16px;
+    top: calc(max(22px, env(safe-area-inset-top, 0px)) + 42px);
+    right: max(24px, env(safe-area-inset-right, 0px));
+    bottom: auto;
+    width: 38px;
+    height: 38px;
+  }
+  .chat-fab svg {
+    width: 17px;
+    height: 17px;
+  }
+  .chat-panel {
+    top: calc(max(22px, env(safe-area-inset-top, 0px)) + 88px);
   }
 }

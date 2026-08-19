@@ -7,6 +7,7 @@ import SceneSwitcher from "./SceneSwitcher";
 import AmbientParticles from "./AmbientParticles";
 import ClickSparkles from "./ClickSparkles";
 import JoinToasts from "./JoinToasts";
+import ReactionBursts from "./ReactionBursts";
 import ChatPanel from "./ChatPanel";
 import PlaylistPanel from "./PlaylistPanel";
 import { usePresence } from "@/hooks/usePresence";
@@ -30,6 +31,9 @@ export default function PahadiAdda() {
   const [started, setStarted] = useState(false);
   const [clock, setClock] = useState("");
   const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [volume, setVolume] = useState(85);
+  const [muted, setMuted] = useState(false);
+  const [shareNotice, setShareNotice] = useState(false);
   // Real (player-reported) durations, once known, in place of the shipped
   // estimates — kept in state so the render below can read it safely, and
   // mirrored into a ref so the timers/callbacks further down (which run
@@ -40,7 +44,8 @@ export default function PahadiAdda() {
   const playerRef = useRef<YouTubePlayer | null>(null);
   const durationsRef = useRef<Record<string, number>>({});
 
-  const { onlineCount, joinEvents, dismissJoinEvent } = usePresence();
+  const { onlineCount, joinEvents, dismissJoinEvent, reactionEvents, sendReaction, dismissReactionEvent } =
+    usePresence();
   const { sceneId, setSceneId } = useScene();
   const parallaxRef = useParallax<HTMLDivElement>();
 
@@ -110,6 +115,16 @@ export default function PahadiAdda() {
     return () => clearInterval(id);
   }, []);
 
+  // The tab title doubles as a live "people are here right now" signal —
+  // unlike an OG image (cached by crawlers for days), this updates for
+  // anyone with the tab open or pinned.
+  useEffect(() => {
+    document.title =
+      onlineCount !== null && onlineCount > 0
+        ? `🎶 ${onlineCount} सुन रहे हैं · Pahadi Adda`
+        : "Pahadi Adda";
+  }, [onlineCount]);
+
   function handlePrev() {
     goToTrack((currentIndexRef.current - 1 + PLAYLIST.length) % PLAYLIST.length, 0);
     playerRef.current?.playVideo();
@@ -136,7 +151,7 @@ export default function PahadiAdda() {
 
   function handleStart() {
     playerRef.current?.unMute();
-    playerRef.current?.setVolume(85);
+    playerRef.current?.setVolume(volume);
     playerRef.current?.playVideo();
     setStarted(true);
   }
@@ -145,6 +160,49 @@ export default function PahadiAdda() {
     goToTrack(index, 0);
     playerRef.current?.playVideo();
     setPlaylistOpen(false);
+  }
+
+  function handleVolumeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = Number(e.target.value);
+    setVolume(v);
+    playerRef.current?.setVolume(v);
+    if (v > 0 && muted) {
+      playerRef.current?.unMute();
+      setMuted(false);
+    }
+  }
+
+  function handleToggleMute() {
+    if (!playerRef.current) return;
+    if (muted) {
+      playerRef.current.unMute();
+      setMuted(false);
+    } else {
+      playerRef.current.mute();
+      setMuted(true);
+    }
+  }
+
+  async function handleShare() {
+    const text =
+      onlineCount !== null && onlineCount > 0
+        ? `पहाड़ी अड्डा — अभी ${onlineCount} लोग साथ में सुन रहे हैं। तुम भी आ जाओ 🎶`
+        : "पहाड़ी अड्डा — पहाड़ी गीतों का लाइव अड्डा। सुनने आ जाओ 🎶";
+    const url = window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "पहाड़ी अड्डा", text, url });
+      } catch {
+        // user cancelled the share sheet — nothing to do
+      }
+      return;
+    }
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setShareNotice(true);
+      setTimeout(() => setShareNotice(false), 2000);
+    }
   }
 
   const progressPct = trackDuration ? Math.min(100, (elapsed / trackDuration) * 100) : 0;
@@ -175,15 +233,24 @@ export default function PahadiAdda() {
           )}
           <SceneSwitcher activeId={sceneId} onChange={setSceneId} />
         </div>
-        <a
-          className="ytlink"
-          href="https://www.youtube.com/results?search_query=pahadi+uttarakhandi+songs"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <YtIcon />
-          <span>YouTube पर सुनो</span>
-        </a>
+        <div className="topbar-actions">
+          <div style={{ position: "relative" }}>
+            <button className="sharelink" onClick={handleShare}>
+              <ShareIcon />
+              <span>शेयर करें</span>
+            </button>
+            {shareNotice && <div className="share-toast">लिंक कॉपी हो गया</div>}
+          </div>
+          <a
+            className="ytlink"
+            href="https://www.youtube.com/results?search_query=pahadi+uttarakhandi+songs"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <YtIcon />
+            <span>YouTube पर सुनो</span>
+          </a>
+        </div>
       </div>
 
       <div className="plaque-wrap">
@@ -248,23 +315,53 @@ export default function PahadiAdda() {
         </div>
 
         <div className="controls">
-          <button className="ctrl-btn" onClick={handlePrev} aria-label="पिछला गीत">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12L9 12z" /></svg>
-          </button>
           <button
-            className={`ctrl-btn play-btn${isPlaying ? " is-playing" : ""}`}
-            onClick={handlePlayPause}
-            aria-label="चलाएं / रोकें"
+            className="ctrl-btn reaction-btn"
+            onClick={() => sendReaction("🪔")}
+            title="दिया जलाएं"
+            aria-label="दिया जलाएं"
           >
-            {isPlaying ? (
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-            )}
+            🪔
           </button>
-          <button className="ctrl-btn" onClick={handleNext} aria-label="अगला गीत">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l11-6z" /></svg>
-          </button>
+
+          <div className="controls-transport">
+            <button className="ctrl-btn" onClick={handlePrev} aria-label="पिछला गीत">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12L9 12z" /></svg>
+            </button>
+            <button
+              className={`ctrl-btn play-btn${isPlaying ? " is-playing" : ""}`}
+              onClick={handlePlayPause}
+              aria-label="चलाएं / रोकें"
+            >
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              )}
+            </button>
+            <button className="ctrl-btn" onClick={handleNext} aria-label="अगला गीत">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l11-6z" /></svg>
+            </button>
+          </div>
+
+          <div className="controls-side">
+            <button
+              className="ctrl-btn mute-btn"
+              onClick={handleToggleMute}
+              aria-label={muted ? "अनम्यूट करें" : "म्यूट करें"}
+            >
+              {muted || volume === 0 ? <MuteIcon /> : <VolumeIcon />}
+            </button>
+            <input
+              type="range"
+              className="volume-slider"
+              min={0}
+              max={100}
+              value={muted ? 0 : volume}
+              onChange={handleVolumeChange}
+              aria-label="आवाज़"
+            />
+          </div>
         </div>
 
         {!started && (
@@ -283,6 +380,7 @@ export default function PahadiAdda() {
       )}
 
       <JoinToasts events={joinEvents} onDismiss={dismissJoinEvent} />
+      <ReactionBursts events={reactionEvents} onDismiss={dismissReactionEvent} />
       <ChatPanel />
     </>
   );
@@ -292,6 +390,30 @@ function ListIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M4 6h16v2H4zM4 11h16v2H4zM4 16h10v2H4z" />
+    </svg>
+  );
+}
+
+function VolumeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 9v6h4l5 5V4L8 9H4zm11.5 3a4.5 4.5 0 0 0-2.5-4.03v8.06A4.5 4.5 0 0 0 15.5 12z" />
+    </svg>
+  );
+}
+
+function MuteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 9v6h4l5 5V4L8 9H4zm14.7-1.3-1.4-1.4-2.6 2.6-2.6-2.6-1.4 1.4 2.6 2.6-2.6 2.6 1.4 1.4 2.6-2.6 2.6 2.6 1.4-1.4-2.6-2.6z" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18 16.08a2.9 2.9 0 0 0-1.96.77L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a3 3 0 1 0-.9-1.72L8 9.58a3 3 0 1 0 0 4.84l7.12 4.15a3 3 0 1 0 .88-1.49z" />
     </svg>
   );
 }

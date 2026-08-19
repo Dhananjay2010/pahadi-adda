@@ -13,7 +13,7 @@ function timeLabel(iso: string): string {
 }
 
 export default function ChatPanel() {
-  const { messages, configured, canSend, sendMessage } = useChat();
+  const { messages, configured, canSend, sendMessage, error } = useChat();
   const [isOpen, setIsOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   // Safe to read localStorage in the initializer: ChatPanel only ever
@@ -45,11 +45,11 @@ export default function ChatPanel() {
     setEditingName(false);
   }
 
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!draft.trim() || !canSend) return;
-    sendMessage(draft, nickname);
-    setDraft("");
+    const sent = await sendMessage(draft, nickname);
+    if (sent) setDraft("");
   }
 
   if (!configured) return null;
@@ -106,6 +106,8 @@ export default function ChatPanel() {
               </button>
             )}
           </div>
+
+          {error && <div className="chat-error">भेजने में समस्या हुई: {error}</div>}
 
           <form className="chat-input-row" onSubmit={handleSend}>
             <input

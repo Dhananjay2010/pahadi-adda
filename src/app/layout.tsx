@@ -14,10 +14,27 @@ const notoSerifDevanagari = Noto_Serif_Devanagari({
   weight: ["600", "700"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Pahadi Adda",
   description:
     "A live listening room for Garhwali & Kumaoni pahadi songs, styled after Uttarakhand's hill temples.",
+  openGraph: {
+    title: "पहाड़ी अड्डा — Pahadi Adda",
+    description:
+      "A live listening room for Garhwali & Kumaoni pahadi songs — everyone hears the same song, sees who's around, and can chat.",
+    url: siteUrl,
+    siteName: "Pahadi Adda",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "पहाड़ी अड्डा — Pahadi Adda",
+    description:
+      "A live listening room for Garhwali & Kumaoni pahadi songs — everyone hears the same song, sees who's around, and can chat.",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

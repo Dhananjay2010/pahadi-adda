@@ -1,6 +1,7 @@
 "use client";
 
 import { PLAYLIST } from "@/lib/playlist";
+import { useSongRequests } from "@/hooks/useSongRequests";
 
 export default function PlaylistPanel({
   currentIndex,
@@ -11,6 +12,8 @@ export default function PlaylistPanel({
   onSelect: (index: number) => void;
   onClose: () => void;
 }) {
+  const { configured, counts, hasVoted, requestSong } = useSongRequests();
+
   return (
     <div className="playlist-panel">
       <div className="chat-header">
@@ -20,21 +23,38 @@ export default function PlaylistPanel({
         </button>
       </div>
       <div className="playlist-list">
-        {PLAYLIST.map((track, index) => (
-          <button
-            key={track.id}
-            className={`playlist-item${index === currentIndex ? " active" : ""}`}
-            onClick={() => onSelect(index)}
-          >
-            <span className="playlist-item-num">
-              {index === currentIndex ? <PlayingIcon /> : index + 1}
-            </span>
-            <span className="playlist-item-text">
-              <span className="playlist-item-dev">{track.dev}</span>
-              <span className="playlist-item-lat">{track.lat}</span>
-            </span>
-          </button>
-        ))}
+        {PLAYLIST.map((track, index) => {
+          const voted = hasVoted(track.videoId);
+          const count = counts[track.videoId] ?? 0;
+          return (
+            <div
+              key={track.id}
+              className={`playlist-item${index === currentIndex ? " active" : ""}`}
+            >
+              <button className="playlist-item-select" onClick={() => onSelect(index)}>
+                <span className="playlist-item-num">
+                  {index === currentIndex ? <PlayingIcon /> : index + 1}
+                </span>
+                <span className="playlist-item-text">
+                  <span className="playlist-item-dev">{track.dev}</span>
+                  <span className="playlist-item-lat">{track.lat}</span>
+                </span>
+              </button>
+              {configured && (
+                <button
+                  className={`playlist-item-request${voted ? " voted" : ""}`}
+                  onClick={() => requestSong(track.videoId)}
+                  disabled={voted}
+                  title={voted ? "आपने अनुरोध कर दिया" : "यह गीत अनुरोध करें"}
+                  aria-label={voted ? "आपने अनुरोध कर दिया" : "यह गीत अनुरोध करें"}
+                >
+                  <RequestIcon />
+                  {count > 0 && <span>{count}</span>}
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -44,6 +64,14 @@ function PlayingIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function RequestIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2 9.5 9H2l6 4.5L5.5 21 12 16l6.5 5-2.5-7.5L22 9h-7.5z" />
     </svg>
   );
 }

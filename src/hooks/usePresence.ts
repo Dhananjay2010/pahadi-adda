@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { fetchGeo, placeLabel } from "@/lib/geo";
 
@@ -18,6 +19,14 @@ export type JoinEvent = {
   at: number;
 };
 
+export type ReactionEvent = {
+  id: string;
+  emoji: string;
+  x: number;
+};
+
+type ReactionPayload = { emoji: string; x: number };
+
 /**
  * Tracks this browser tab as "present" in the shared room via Supabase
  * Realtime Presence, and surfaces the live headcount plus a stream of
@@ -29,7 +38,9 @@ export type JoinEvent = {
 export function usePresence() {
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
   const [joinEvents, setJoinEvents] = useState<JoinEvent[]>([]);
+  const [reactionEvents, setReactionEvents] = useState<ReactionEvent[]>([]);
   const selfKeyRef = useRef<string>("");
+  const channelRef = useRef<RealtimeChannel | null>(null);
   // Presence's "join" event fires once per already-present member the
   // moment a client subscribes (the library diffs your empty starting state
   // against the full roster it receives) — not just for genuine new
@@ -77,6 +88,16 @@ export function usePresence() {
           ]);
         },
       )
+      .on(
+        "broadcast",
+        { event: "reaction" },
+        ({ payload }: { payload: ReactionPayload }) => {
+          setReactionEvents((prev) => [
+            ...prev,
+            { id: `${Date.now()}-${Math.random()}`, emoji: payload.emoji, x: payload.x },
+          ]);
+        },
+      )
       .subscribe(async (status: string) => {
         if (status === "SUBSCRIBED") {
           const geo = await fetchGeo();
@@ -88,9 +109,24 @@ export function usePresence() {
         }
       });
 
+    channelRef.current = channel;
+
     return () => {
+      channelRef.current = null;
       supabase!.removeChannel(channel);
     };
+  }, []);
+
+  // Sends a reaction to everyone else in the room and shows it locally too
+  // (broadcast doesn't echo back to the sender by default).
+  const sendReaction = useCallback((emoji: string) => {
+    const x = Math.round((Math.random() - 0.5) * 120);
+    channelRef.current?.send({ type: "broadcast", event: "reaction", payload: { emoji, x } });
+    setReactionEvents((prev) => [...prev, { id: `${Date.now()}-self`, emoji, x }]);
+  }, []);
+
+  const dismissReactionEvent = useCallback((id: string) => {
+    setReactionEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
   // Stable identity — Toast's auto-dismiss effect depends on this, and
@@ -101,5 +137,5 @@ export function usePresence() {
     setJoinEvents((prev) => prev.filter((e) => e.key !== key));
   }, []);
 
-  return { onlineCount, joinEvents, dismissJoinEvent };
+  return { onlineCount, joinEvents, dismissJoinEvent, reactionEvents, sendReaction, dismissReactionEvent };
 }
