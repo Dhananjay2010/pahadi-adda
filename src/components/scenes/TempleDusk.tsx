@@ -104,6 +104,9 @@ const SCENE_SVG = `
     <circle class="diya" cx="-160" cy="765" r="5.5" fill="#ffcf7a" style="animation-delay:.8s"/>
     <circle class="diya" cx="160" cy="765" r="5.5" fill="#ffcf7a" style="animation-delay:1.1s"/>
 
+    <path class="smoke" d="M-190,808 Q-196,780 -184,760 Q-174,742 -182,720" stroke="#d8cfc2" stroke-width="2" fill="none" stroke-linecap="round" opacity="0"/>
+    <path class="smoke" d="M190,808 Q184,776 198,754 Q206,736 196,714" stroke="#d8cfc2" stroke-width="2" fill="none" stroke-linecap="round" opacity="0" style="animation-delay:1.6s"/>
+
     <rect x="-150" y="700" width="300" height="60" fill="#7a4423"/>
     <rect x="-150" y="700" width="300" height="10" fill="#93582f"/>
 

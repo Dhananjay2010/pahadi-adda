@@ -62,6 +62,7 @@ const SCENE_SVG = `
   </g>
 
   <rect x="0" y="420" width="1600" height="480" fill="url(#gg-river)"/>
+  <ellipse class="shimmer" cx="800" cy="500" rx="420" ry="60" fill="#f0c48a" opacity="0.18"/>
   <g stroke="#f0c48a" stroke-width="2" opacity="0.25">
     <line x1="0" y1="470" x2="1600" y2="470"/>
     <line x1="0" y1="520" x2="1600" y2="520"/>

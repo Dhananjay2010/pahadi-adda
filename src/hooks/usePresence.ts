@@ -30,6 +30,13 @@ export function usePresence() {
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
   const [joinEvents, setJoinEvents] = useState<JoinEvent[]>([]);
   const selfKeyRef = useRef<string>("");
+  // Presence's "join" event fires once per already-present member the
+  // moment a client subscribes (the library diffs your empty starting state
+  // against the full roster it receives) — not just for genuine new
+  // arrivals. Those synthetic joins all land before the first "sync", so
+  // gating on that tells real joins (after we have a baseline) apart from
+  // "here's who was already here".
+  const hasSyncedRef = useRef(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -40,6 +47,7 @@ export function usePresence() {
       sessionStorage.setItem("pahadi-adda-session", sessionKey);
     }
     selfKeyRef.current = sessionKey;
+    hasSyncedRef.current = false;
 
     const channel = supabase.channel(ROOM, {
       config: { presence: { key: sessionKey } },
@@ -49,12 +57,14 @@ export function usePresence() {
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState<PresenceMeta>();
         setOnlineCount(Object.keys(state).length);
+        hasSyncedRef.current = true;
       })
       .on(
         "presence",
         { event: "join" },
         ({ key, newPresences }: { key: string; newPresences: PresenceMeta[] }) => {
           if (key === selfKeyRef.current) return;
+          if (!hasSyncedRef.current) return;
           const meta = newPresences[0];
           const label = placeLabel({
             city: meta?.city ?? null,

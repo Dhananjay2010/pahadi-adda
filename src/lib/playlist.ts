@@ -119,6 +119,55 @@ export const PLAYLIST: Track[] = [
     lat: "Aija Agni Aija Agni (Mangal) — Narendra Singh Negi",
     assumedDuration: 271,
   },
+  {
+    id: "thal-ki-bazar",
+    videoId: "ijN3PK7j6PQ",
+    dev: "थल की बाजार",
+    lat: "Thal Ki Bazar — B.K. Samant",
+    assumedDuration: 258,
+  },
+  {
+    id: "chandna-mera-pahaad",
+    videoId: "TbJNa9c9U3A",
+    dev: "चांदना मेरा पहाड़",
+    lat: "Chandna Mera Pahaad — Meena Rana",
+    assumedDuration: 246,
+  },
+  {
+    id: "ringa-ring",
+    videoId: "cN7PEc2hQJk",
+    dev: "रिंगा रिंग",
+    lat: "Ringa Ring — Meena Rana & Sanjay Kumola",
+    assumedDuration: 233,
+  },
+  {
+    id: "yaad-tera-gaon-ki",
+    videoId: "wjr9ocgAUyk",
+    dev: "याद तेरा गांव की",
+    lat: "Yaad Tera Gaon Ki — Gajendra Rana",
+    assumedDuration: 262,
+  },
+  {
+    id: "yo-pahad-ma",
+    videoId: "NmwtS1GnX5k",
+    dev: "यो पहाड़ मा",
+    lat: "Yo Pahad Ma — Jitendra Tomkyal",
+    assumedDuration: 241,
+  },
+  {
+    id: "ghasyari",
+    videoId: "D2Opsod0KMc",
+    dev: "घसियारी",
+    lat: "Ghasyari — Jitendra Tomkyal & Mamta Arya",
+    assumedDuration: 257,
+  },
+  {
+    id: "dwarahat-bazaar",
+    videoId: "vPX80OOHrEo",
+    dev: "द्वाराहाट बाजार",
+    lat: "Dwarahat Bazaar — Jitendra Tomkyal",
+    assumedDuration: 249,
+  },
 ];
 
 /** Fixed reference instant every visitor's clock math is anchored to. */

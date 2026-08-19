@@ -50,7 +50,7 @@ const SCENE_SVG = `
     .map((_, i) => {
       const cx = 60 + i * 112 + (i % 3) * 24;
       const cy = 560 + (i % 4) * 65;
-      return `<g transform="translate(${cx},${cy})">
+      return `<g class="flower-cluster" transform="translate(${cx},${cy})" style="animation-delay:${(i % 5) * 0.4}s">
         <ellipse cx="-6" cy="4" rx="9" ry="5" fill="#3a6b2c"/>
         <ellipse cx="7" cy="6" rx="9" ry="5" fill="#3a6b2c"/>
         <circle cx="-8" cy="-4" r="6" fill="#d95f7a"/>

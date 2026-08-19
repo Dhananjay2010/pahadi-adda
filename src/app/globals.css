@@ -31,6 +31,12 @@ body {
   position: relative;
 }
 
+.scene-viewport {
+  position: absolute;
+  inset: -20px;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+}
 .stage {
   position: absolute;
   inset: 0;
@@ -88,6 +94,88 @@ body {
 }
 .stage .diya {
   animation: flicker 1.8s ease-in-out infinite;
+}
+
+@keyframes smoke-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scaleY(0.7);
+  }
+  15% {
+    opacity: 0.35;
+  }
+  80% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scaleY(1.15);
+  }
+}
+.stage .smoke {
+  animation: smoke-rise 4.5s ease-in infinite;
+  transform-origin: bottom center;
+}
+
+@keyframes bird-glide {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(14px, -5px);
+  }
+}
+.stage .bird {
+  animation: bird-glide 6s ease-in-out infinite;
+}
+
+@keyframes shimmer-drift {
+  0% {
+    transform: translateX(-8%);
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(8%);
+    opacity: 0.5;
+  }
+}
+.stage .shimmer {
+  animation: shimmer-drift 5s ease-in-out infinite alternate;
+}
+
+@keyframes chimney-smoke {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  20% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(8px, -46px) scale(1.3);
+  }
+}
+.stage .chimney-smoke {
+  animation: chimney-smoke 3.6s ease-out infinite;
+}
+
+@keyframes flower-sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+.stage .flower-cluster {
+  animation: flower-sway 3.2s ease-in-out infinite;
+  transform-origin: bottom center;
 }
 
 /* ---------- top bar ---------- */
@@ -262,6 +350,7 @@ body {
   flex: none;
   width: 32px;
   height: 32px;
+  padding: 0;
   border-radius: 9px;
   display: flex;
   align-items: center;
@@ -270,6 +359,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-warm);
   text-decoration: none;
+  cursor: pointer;
+  font: inherit;
   transition:
     background 0.15s ease,
     border-color 0.15s ease;
@@ -485,6 +576,39 @@ body {
   }
 }
 
+/* ---------- click sparkles ---------- */
+.sparkle-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.sparkle-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.sparkle-mote {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe9b8 0%, #eda93a 65%, transparent 100%);
+  transform: rotate(var(--angle)) translateX(0);
+  animation: sparkle-out 0.7s ease-out forwards;
+}
+@keyframes sparkle-out {
+  0% {
+    transform: rotate(var(--angle)) translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(var(--angle)) translateX(26px) scale(0.2);
+    opacity: 0;
+  }
+}
+
 /* ---------- card + track entrance ---------- */
 @keyframes card-in {
   from {
@@ -585,7 +709,17 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: card-in 0.35s ease both;
+  animation: panel-in 0.25s ease both;
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .chat-header {
   display: flex;
@@ -697,6 +831,94 @@ body {
   height: 15px;
 }
 
+/* ---------- playlist panel ---------- */
+.playlist-panel {
+  position: absolute;
+  left: 16px;
+  top: 80px;
+  bottom: 26px;
+  z-index: 8;
+  width: min(88vw, 320px);
+  max-height: min(60vh, 460px);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: panel-in 0.25s ease both;
+}
+.playlist-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-warm);
+  transition: background 0.15s ease;
+}
+.playlist-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.playlist-item.active {
+  background: rgba(237, 169, 58, 0.14);
+}
+.playlist-item-num {
+  flex: none;
+  width: 22px;
+  text-align: center;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.playlist-item.active .playlist-item-num {
+  color: var(--marigold);
+}
+.playlist-item-num svg {
+  width: 12px;
+  height: 12px;
+}
+.playlist-item-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.playlist-item-dev {
+  font-family: var(--font-noto-devanagari), serif;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.playlist-item.active .playlist-item-dev {
+  color: var(--marigold);
+}
+.playlist-item-lat {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .star,
   .flagline,
@@ -705,10 +927,13 @@ body {
   .card,
   .meta,
   .play-btn.is-playing,
-  .chat-panel {
+  .chat-panel,
+  .playlist-panel,
+  .sparkle-mote {
     animation: none !important;
   }
-  .scene-layer {
+  .scene-layer,
+  .scene-viewport {
     transition: none;
   }
 }
@@ -731,7 +956,8 @@ body {
   .toast {
     justify-content: center;
   }
-  .chat-panel {
+  .chat-panel,
+  .playlist-panel {
     right: 10px;
     left: 10px;
     width: auto;

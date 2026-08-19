@@ -76,6 +76,9 @@ const SCENE_SVG = `
       <polygon points="-36,-2 36,-2 0,-34" fill="#6b6b62"/>
       <rect x="-6" y="14" width="12" height="20" fill="#5a4530"/>
     </g>
+
+    <circle class="chimney-smoke" cx="-80" cy="-44" r="4" fill="#e8e2d6"/>
+    <circle class="chimney-smoke" cx="110" cy="-42" r="3.5" fill="#e8e2d6" style="animation-delay:1.4s"/>
   </g>
 
   <g stroke="#a68a5a" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.85">

@@ -5,10 +5,13 @@ import YouTube, { type YouTubePlayer } from "react-youtube";
 import { SCENES } from "@/components/scenes";
 import SceneSwitcher from "./SceneSwitcher";
 import AmbientParticles from "./AmbientParticles";
+import ClickSparkles from "./ClickSparkles";
 import JoinToasts from "./JoinToasts";
 import ChatPanel from "./ChatPanel";
+import PlaylistPanel from "./PlaylistPanel";
 import { usePresence } from "@/hooks/usePresence";
 import { useScene } from "@/hooks/useScene";
+import { useParallax } from "@/hooks/useParallax";
 import { PLAYLIST, scheduleFromEpoch } from "@/lib/playlist";
 
 const RESYNC_EVERY_MS = 45_000;
@@ -29,6 +32,7 @@ export default function PahadiAdda() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [started, setStarted] = useState(false);
   const [clock, setClock] = useState("");
+  const [playlistOpen, setPlaylistOpen] = useState(false);
   // Real (player-reported) durations, once known, in place of the shipped
   // estimates — kept in state so the render below can read it safely, and
   // mirrored into a ref so the timers/callbacks further down (which run
@@ -42,6 +46,7 @@ export default function PahadiAdda() {
 
   const { onlineCount, joinEvents, dismissJoinEvent } = usePresence();
   const { sceneId, setSceneId } = useScene();
+  const parallaxRef = useParallax<HTMLDivElement>();
 
   const track = PLAYLIST[currentIndex];
   const trackDuration = durations[track.videoId] ?? track.assumedDuration;
@@ -154,19 +159,29 @@ export default function PahadiAdda() {
     setStarted(true);
   }
 
+  function handleSelectTrack(index: number) {
+    manualRef.current = true;
+    goToTrack(index, 0);
+    playerRef.current?.playVideo();
+    setPlaylistOpen(false);
+  }
+
   const progressPct = trackDuration ? Math.min(100, (elapsed / trackDuration) * 100) : 0;
 
   return (
     <>
-      {SCENES.map((scene) => (
-        <div
-          key={scene.id}
-          className={`scene-layer${scene.id === sceneId ? " active" : ""}`}
-        >
-          <scene.Component />
-        </div>
-      ))}
+      <div className="scene-viewport" ref={parallaxRef}>
+        {SCENES.map((scene) => (
+          <div
+            key={scene.id}
+            className={`scene-layer${scene.id === sceneId ? " active" : ""}`}
+          >
+            <scene.Component />
+          </div>
+        ))}
+      </div>
       <AmbientParticles />
+      <ClickSparkles />
 
       <div className="topbar">
         <div>
@@ -222,6 +237,15 @@ export default function PahadiAdda() {
             <div className="title-dev">{track.dev}</div>
             <div className="title-lat">{track.lat}</div>
           </div>
+          <button
+            className="openyt"
+            onClick={() => setPlaylistOpen((v) => !v)}
+            title="पूरी सूची देखें"
+            aria-label="पूरी सूची देखें"
+            aria-pressed={playlistOpen}
+          >
+            <ListIcon />
+          </button>
           <a
             className="openyt"
             href={`https://www.youtube.com/watch?v=${track.videoId}`}
@@ -269,9 +293,25 @@ export default function PahadiAdda() {
         )}
       </div>
 
+      {playlistOpen && (
+        <PlaylistPanel
+          currentIndex={currentIndex}
+          onSelect={handleSelectTrack}
+          onClose={() => setPlaylistOpen(false)}
+        />
+      )}
+
       <JoinToasts events={joinEvents} onDismiss={dismissJoinEvent} />
       <ChatPanel />
     </>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 6h16v2H4zM4 11h16v2H4zM4 16h10v2H4z" />
+    </svg>
   );
 }
 
