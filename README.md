@@ -1,9 +1,9 @@
 # पहाड़ी अड्डा — Pahadi Adda
 
 A live listening room for Garhwali & Kumaoni pahadi songs, styled after
-Uttarakhand — five illustrated scenes (a hill temple at dusk, Himalayan
-sunrise, a terraced village, a Ganga ghat, an alpine bugyal meadow) that the
-visitor can switch between. Everyone hears (roughly) the same song at the
+Uttarakhand — one cinematic Himalayan hill-temple scene whose sky, stars and
+light continuously track the visitor's real local time, instead of a set of
+illustrations to pick between. Everyone hears (roughly) the same song at the
 same time, sees how many people are on the site right now, gets a toast when
 someone new joins, and can chat with whoever else is around.
 
@@ -20,12 +20,14 @@ someone new joins, and can chat with whoever else is around.
   browser lands on the same track independently, with no server needed for
   that part. Anyone who manually skips/scrubs breaks off from the shared
   schedule for their own session (as expected) but keeps listening normally.
-- **Background scenes** — five illustrated SVG scenes in
-  `src/components/scenes/`, registered in `src/components/scenes/index.ts`.
-  The visitor's pick is remembered in `localStorage` (`src/hooks/useScene.ts`)
-  and crossfades in via CSS (`.scene-layer` in `globals.css`) — all five are
-  mounted at once and only opacity changes, so switching is instant with no
-  reload or flash.
+- **Background** — one layered SVG Himalayan scene (`src/components/HeroScene.tsx`):
+  atmospheric-perspective mountain ridges with clipped snow-cap highlights, a
+  hill temple with prayer flags and diya lamps, drifting clouds/mist, and a
+  starfield. Its sky gradient, star/milky-way opacity, and horizon glow all
+  come from `src/lib/timePalette.ts`, interpolated continuously from the
+  visitor's real local hour (`src/hooks/useTimeOfDay.ts`) — dawn, midday,
+  golden hour, dusk, and night are all the same scene, just lit differently,
+  so there's nothing to pick and nothing that looks stale.
 - **Live presence + join toasts** — powered by Supabase Realtime's
   [Presence](https://supabase.com/docs/guides/realtime/presence) feature
   (`src/hooks/usePresence.ts`). Each browser tab tracks itself in a shared
@@ -143,8 +145,8 @@ src/
     twitter-image.tsx           re-exports opengraph-image.tsx for Twitter
   components/
     PahadiAdda.tsx           main client component: playback, controls, layout
-    scenes/                   the five illustrated backgrounds + registry
-    SceneSwitcher.tsx          background picker (top-left dots) + current label
+    HeroScene.tsx              the mountain/temple background art
+    MistLayer.tsx, CelestialBody.tsx, ShootingStar.tsx  shared atmosphere, sun/moon arc
     AmbientParticles.tsx        drifting ember/firefly atmosphere
     ReactionBursts.tsx           floating diya reactions
     JoinToasts.tsx               toast notifications
@@ -154,9 +156,10 @@ src/
     usePresence.ts             Supabase Realtime presence (online count, joins, reactions)
     useChat.ts                   Supabase-backed chat (history + realtime)
     useSongRequests.ts            Supabase-backed "request this song" tally
-    useScene.ts                   remembers the chosen background scene
+    useTimeOfDay.ts                local hour, updated once a minute
   lib/
     playlist.ts                 curated song list + shared-schedule math
+    timePalette.ts                sky/star/glow color interpolation by hour
     geo.ts                        shared geo-lookup helper (presence + chat)
     supabase.ts                    Supabase client
   assets/

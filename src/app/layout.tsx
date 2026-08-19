@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Noto_Serif_Devanagari } from "next/font/google";
+import { Manrope, Yatra_One } from "next/font/google";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -8,10 +8,13 @@ const manrope = Manrope({
   weight: ["500", "700", "800"],
 });
 
-const notoSerifDevanagari = Noto_Serif_Devanagari({
-  variable: "--font-noto-devanagari",
+// Devanagari display face for headings only (site title, song names, panel
+// headers) — a hand-painted signboard character that fits an "अड्डा"
+// (village gathering spot). Everything else stays on Manrope, unchanged.
+const yatraOne = Yatra_One({
+  variable: "--font-devanagari-display",
   subsets: ["devanagari"],
-  weight: ["600", "700"],
+  weight: ["400"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -41,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="hi"
-      className={`${manrope.variable} ${notoSerifDevanagari.variable}`}
+      className={`${manrope.variable} ${yatraOne.variable}`}
     >
       <body>{children}</body>
     </html>

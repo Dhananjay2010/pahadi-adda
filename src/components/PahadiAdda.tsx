@@ -2,16 +2,17 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import YouTube, { type YouTubePlayer } from "react-youtube";
-import { SCENES } from "@/components/scenes";
-import SceneSwitcher from "./SceneSwitcher";
+import HeroScene from "./HeroScene";
 import AmbientParticles from "./AmbientParticles";
+import CelestialBody from "./CelestialBody";
+import MistLayer from "./MistLayer";
+import ShootingStar from "./ShootingStar";
 import ClickSparkles from "./ClickSparkles";
 import JoinToasts from "./JoinToasts";
 import ReactionBursts from "./ReactionBursts";
 import ChatPanel from "./ChatPanel";
 import PlaylistPanel from "./PlaylistPanel";
 import { usePresence } from "@/hooks/usePresence";
-import { useScene } from "@/hooks/useScene";
 import { useParallax } from "@/hooks/useParallax";
 import { PLAYLIST, scheduleFromEpoch } from "@/lib/playlist";
 
@@ -48,7 +49,6 @@ export default function PahadiAdda() {
 
   const { onlineCount, joinEvents, dismissJoinEvent, reactionEvents, sendReaction, dismissReactionEvent } =
     usePresence();
-  const { sceneId, setSceneId } = useScene();
   const parallaxRef = useParallax<HTMLDivElement>();
 
   const track = PLAYLIST[currentIndex];
@@ -270,15 +270,11 @@ export default function PahadiAdda() {
 
   return (
     <>
-      <div className="scene-viewport" ref={parallaxRef}>
-        {SCENES.map((scene) => (
-          <div
-            key={scene.id}
-            className={`scene-layer${scene.id === sceneId ? " active" : ""}`}
-          >
-            <scene.Component />
-          </div>
-        ))}
+      <div className="hero-viewport" ref={parallaxRef}>
+        <HeroScene />
+        <MistLayer />
+        <CelestialBody />
+        <ShootingStar />
       </div>
       <AmbientParticles />
       <ClickSparkles />
@@ -292,7 +288,6 @@ export default function PahadiAdda() {
               माहौल में <b>{onlineCount}</b> लोग
             </div>
           )}
-          <SceneSwitcher activeId={sceneId} onChange={setSceneId} />
           {showHint && (
             <div className="hint-bubble">
               <span>यहाँ सब एक साथ, लाइव एक ही गीत सुन रहे हैं 🎧</span>
