@@ -168,6 +168,55 @@ export const PLAYLIST: Track[] = [
     lat: "Dwarahat Bazaar — Jitendra Tomkyal",
     assumedDuration: 249,
   },
+  {
+    id: "ranchana",
+    videoId: "h2h1GyOEPlc",
+    dev: "रञ्चणा",
+    lat: "Ranchana — Pandavaas",
+    assumedDuration: 432,
+  },
+  {
+    id: "ghughuti-basuti",
+    videoId: "m2E_0XLNLLw",
+    dev: "घुघुती बासुती",
+    lat: "Ghughuti Basuti — Pandavaas",
+    assumedDuration: 281,
+  },
+  {
+    id: "mwaari",
+    videoId: "xOEumxQp1gM",
+    dev: "म्वारी",
+    lat: "Mwaari — Pandavaas",
+    assumedDuration: 330,
+  },
+  {
+    id: "saira-gaon",
+    videoId: "rZXJ8Q-0LtI",
+    dev: "सैरा गौं",
+    lat: "Saira Gaon — Pandavaas",
+    assumedDuration: 312,
+  },
+  {
+    id: "batu-chh-samwar",
+    videoId: "KwfU54k2ZxA",
+    dev: "बटू छ समवार",
+    lat: "Batu Chh Samwar — Narendra Singh Negi & Manju Sundriyal",
+    assumedDuration: 490,
+  },
+  {
+    id: "min-ta-suni-tera-gaon-ma",
+    videoId: "Tbu166qirVQ",
+    dev: "मीं त सुणी तेरा गौं मा",
+    lat: "Min Ta Suni Tera Gaon Ma — N.S. Negi & Meena Rana",
+    assumedDuration: 335,
+  },
+  {
+    id: "paili-tin-rupako-jadu-chalai",
+    videoId: "WBTrfpmgUpo",
+    dev: "पैली तीन रुपाको जादू चलाई",
+    lat: "Paili Tin Rupako Jadu Chalai — N.S. Negi & Meena Rana",
+    assumedDuration: 334,
+  },
 ];
 
 /** Fixed reference instant every visitor's clock math is anchored to. */
