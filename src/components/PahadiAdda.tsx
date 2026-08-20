@@ -307,18 +307,15 @@ export default function PahadiAdda() {
             </button>
             {shareNotice && <div className="share-toast">लिंक कॉपी हो गया</div>}
           </div>
-          <div style={{ position: "relative" }}>
-            <button
-              className="credits-btn"
-              onClick={() => setCreditsOpen((v) => !v)}
-              title="फोटो साभार"
-              aria-label="फोटो साभार"
-              aria-pressed={creditsOpen}
-            >
-              <InfoIcon />
-            </button>
-            {creditsOpen && <PhotoCredits onClose={() => setCreditsOpen(false)} />}
-          </div>
+          <button
+            className="credits-btn"
+            onClick={() => setCreditsOpen((v) => !v)}
+            title="फोटो साभार"
+            aria-label="फोटो साभार"
+            aria-pressed={creditsOpen}
+          >
+            <InfoIcon />
+          </button>
           <a
             className="ytlink"
             href="https://www.youtube.com/results?search_query=pahadi+uttarakhandi+songs"
@@ -463,6 +460,7 @@ export default function PahadiAdda() {
           onClose={() => setPlaylistOpen(false)}
         />
       )}
+      {creditsOpen && <PhotoCredits onClose={() => setCreditsOpen(false)} />}
 
       <JoinToasts events={joinEvents} onDismiss={dismissJoinEvent} />
       <ReactionBursts events={reactionEvents} onDismiss={dismissReactionEvent} />
