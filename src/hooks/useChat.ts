@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { fetchGeo, placeLabel, type Geo } from "@/lib/geo";
+import { containsBlockedWord } from "@/lib/moderation";
 
 const TABLE = "messages";
 const HISTORY_LIMIT = 50;
@@ -88,6 +89,15 @@ export function useChat() {
     if (!supabase) return false;
     const trimmed = content.trim().slice(0, MAX_LENGTH);
     if (!trimmed) return false;
+
+    // Client-side check only rejects fast without a round trip — the real
+    // enforcement is the matching CHECK constraint on messages.content in
+    // supabase/schema.sql, which a request straight to the REST API can't
+    // route around the way this can.
+    if (containsBlockedWord(trimmed)) {
+      setError("इस संदेश में अनुचित भाषा है");
+      return false;
+    }
 
     setCooldown(true);
     setTimeout(() => setCooldown(false), SEND_COOLDOWN_MS);
