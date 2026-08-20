@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import YouTube, { type YouTubePlayer } from "react-youtube";
 import PhotoHero from "./PhotoHero";
 import AmbientParticles from "./AmbientParticles";
-import CelestialBody from "./CelestialBody";
 import MistLayer from "./MistLayer";
 import ShootingStar from "./ShootingStar";
 import ClickSparkles from "./ClickSparkles";
@@ -182,6 +181,17 @@ export default function PahadiAdda() {
     setElapsed(offset);
   }
 
+  const handleSeekBy = useCallback(
+    (delta: number) => {
+      if (!playerRef.current) return;
+      const current = playerRef.current.getCurrentTime?.() ?? elapsed;
+      const offset = Math.min(trackDuration, Math.max(0, current + delta));
+      playerRef.current.seekTo(offset, true);
+      setElapsed(offset);
+    },
+    [elapsed, trackDuration],
+  );
+
   const handleStart = useCallback(() => {
     playerRef.current?.unMute();
     playerRef.current?.setVolume(volume);
@@ -275,7 +285,6 @@ export default function PahadiAdda() {
       <div className="hero-viewport" ref={parallaxRef}>
         <PhotoHero />
         <MistLayer />
-        <CelestialBody />
         <ShootingStar />
       </div>
       <AmbientParticles />
@@ -410,6 +419,9 @@ export default function PahadiAdda() {
             <button className="ctrl-btn" onClick={handlePrev} aria-label="पिछला गीत">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12L9 12z" /></svg>
             </button>
+            <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(-5)} aria-label="5 सेकंड पीछे">
+              <SeekBackIcon />
+            </button>
             <button
               className={`ctrl-btn play-btn${isPlaying ? " is-playing" : ""}`}
               onClick={handlePlayPause}
@@ -420,6 +432,9 @@ export default function PahadiAdda() {
               ) : (
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
               )}
+            </button>
+            <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(5)} aria-label="5 सेकंड आगे">
+              <SeekForwardIcon />
             </button>
             <button className="ctrl-btn" onClick={handleNext} aria-label="अगला गीत">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l11-6z" /></svg>
@@ -473,6 +488,30 @@ function ListIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M4 6h16v2H4zM4 11h16v2H4zM4 16h10v2H4z" />
+    </svg>
+  );
+}
+
+function SeekBackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 5a7 7 0 1 1-6.32 4" strokeLinecap="round" />
+      <path d="M4 4v4h4" strokeLinecap="round" strokeLinejoin="round" />
+      <text x="12" y="16" fontSize="7" fill="currentColor" stroke="none" textAnchor="middle" fontWeight="700">
+        5
+      </text>
+    </svg>
+  );
+}
+
+function SeekForwardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 5a7 7 0 1 0 6.32 4" strokeLinecap="round" />
+      <path d="M20 4v4h-4" strokeLinecap="round" strokeLinejoin="round" />
+      <text x="12" y="16" fontSize="7" fill="currentColor" stroke="none" textAnchor="middle" fontWeight="700">
+        5
+      </text>
     </svg>
   );
 }
