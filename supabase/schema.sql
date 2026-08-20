@@ -1,6 +1,11 @@
--- Run this once in your Supabase project's SQL Editor
+-- Run this in your Supabase project's SQL Editor
 -- (Dashboard -> SQL Editor -> New query -> paste -> Run).
 -- Sets up the table backing the Adde ki Baatein chat panel.
+--
+-- Safe to re-run in full any time this file changes — every statement
+-- below is written to not error on a second run (create/drop-if-exists,
+-- or plain idempotent by nature), so you can always just paste the whole
+-- file again instead of tracking which parts are new.
 
 create table if not exists public.messages (
   id bigint generated always as identity primary key,
@@ -31,18 +36,30 @@ alter table public.messages enable row level security;
 -- last messages, and anyone can post one within the length limits above.
 -- The per-IP rate limit at the bottom of this file is what keeps "anyone
 -- can post" from meaning "anyone can flood".
+drop policy if exists "Anyone can read messages" on public.messages;
 create policy "Anyone can read messages"
   on public.messages for select
   to anon
   using (true);
 
+drop policy if exists "Anyone can send a message" on public.messages;
 create policy "Anyone can send a message"
   on public.messages for insert
   to anon
   with check (true);
 
--- Enables realtime INSERT notifications for this table.
-alter publication supabase_realtime add table public.messages;
+-- Enables realtime INSERT notifications for this table. Guarded because
+-- ALTER PUBLICATION ... ADD TABLE has no IF NOT EXISTS and errors if this
+-- script is ever re-run after the first successful run.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;
 
 -- Backs the "अनुरोध करें" (request) buttons in the playlist panel: each
 -- row is one vote for a song. Counts are tallied client-side over a
@@ -59,17 +76,27 @@ alter table public.song_requests enable row level security;
 
 -- Same open-anon-key tradeoff as the messages table above — same rate
 -- limit at the bottom of this file covers it too.
+drop policy if exists "Anyone can read song requests" on public.song_requests;
 create policy "Anyone can read song requests"
   on public.song_requests for select
   to anon
   using (true);
 
+drop policy if exists "Anyone can request a song" on public.song_requests;
 create policy "Anyone can request a song"
   on public.song_requests for insert
   to anon
   with check (true);
 
-alter publication supabase_realtime add table public.song_requests;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'song_requests'
+  ) then
+    alter publication supabase_realtime add table public.song_requests;
+  end if;
+end $$;
 
 -- ---------- abuse protection: per-IP write rate limit ----------
 -- Neither table above has any per-visitor identity to key off (there's no
