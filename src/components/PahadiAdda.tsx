@@ -89,6 +89,11 @@ export default function PahadiAdda() {
   // math, like time had already run out on it. The schedule is still used
   // once, to pick where a fresh visitor's player starts — after that,
   // playback just runs forward like a normal playlist.
+  //
+  // Also wired up as the player's onError handler (a track gone private,
+  // deleted, or region-blocked fires this the same way ending does) so a
+  // single broken video skips itself instead of leaving every listener
+  // stuck on a dead player until the schedule's next scheduled advance.
   const handleEnd = useCallback(() => {
     const next = (currentIndexRef.current + 1) % PLAYLIST.length;
     goToTrack(next, 0);
@@ -370,6 +375,7 @@ export default function PahadiAdda() {
               onReady={handleReady}
               onStateChange={handleStateChange}
               onEnd={handleEnd}
+              onError={handleEnd}
             />
           </div>
           <div className="meta" key={currentIndex}>

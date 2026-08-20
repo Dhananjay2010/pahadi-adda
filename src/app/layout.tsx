@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Yatra_One } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,15 @@ const yatraOne = Yatra_One({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+// viewport-fit=cover is what makes env(safe-area-inset-*) resolve to real
+// values instead of 0 — without it the notch/home-indicator spacing in
+// globals.css's mobile media query silently does nothing on notched iPhones.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
