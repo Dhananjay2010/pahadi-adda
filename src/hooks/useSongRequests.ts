@@ -79,7 +79,18 @@ export function useSongRequests() {
         saveVoted(next);
         return next;
       });
-      await supabase.from(TABLE).insert({ video_id: videoId });
+      const { error } = await supabase.from(TABLE).insert({ video_id: videoId });
+      // Rejected (rate limit, RLS, network) — undo the optimistic vote so
+      // the star goes back to clickable instead of permanently claiming a
+      // request that was never actually recorded.
+      if (error) {
+        setVoted((prev) => {
+          const next = new Set(prev);
+          next.delete(videoId);
+          saveVoted(next);
+          return next;
+        });
+      }
     },
     [voted],
   );
