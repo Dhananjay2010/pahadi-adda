@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import YouTube, { type YouTubePlayer } from "react-youtube";
-import HeroScene from "./HeroScene";
+import PhotoHero from "./PhotoHero";
 import AmbientParticles from "./AmbientParticles";
 import CelestialBody from "./CelestialBody";
 import MistLayer from "./MistLayer";
@@ -12,6 +12,7 @@ import JoinToasts from "./JoinToasts";
 import ReactionBursts from "./ReactionBursts";
 import ChatPanel from "./ChatPanel";
 import PlaylistPanel from "./PlaylistPanel";
+import PhotoCredits from "./PhotoCredits";
 import { usePresence } from "@/hooks/usePresence";
 import { useParallax } from "@/hooks/useParallax";
 import { PLAYLIST, scheduleFromEpoch } from "@/lib/playlist";
@@ -32,6 +33,7 @@ export default function PahadiAdda() {
   const [started, setStarted] = useState(false);
   const [clock, setClock] = useState("");
   const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const [volume, setVolume] = useState(85);
   const [muted, setMuted] = useState(false);
   const [shareNotice, setShareNotice] = useState(false);
@@ -271,7 +273,7 @@ export default function PahadiAdda() {
   return (
     <>
       <div className="hero-viewport" ref={parallaxRef}>
-        <HeroScene />
+        <PhotoHero />
         <MistLayer />
         <CelestialBody />
         <ShootingStar />
@@ -304,6 +306,18 @@ export default function PahadiAdda() {
               <span>शेयर करें</span>
             </button>
             {shareNotice && <div className="share-toast">लिंक कॉपी हो गया</div>}
+          </div>
+          <div style={{ position: "relative" }}>
+            <button
+              className="credits-btn"
+              onClick={() => setCreditsOpen((v) => !v)}
+              title="फोटो साभार"
+              aria-label="फोटो साभार"
+              aria-pressed={creditsOpen}
+            >
+              <InfoIcon />
+            </button>
+            {creditsOpen && <PhotoCredits onClose={() => setCreditsOpen(false)} />}
           </div>
           <a
             className="ytlink"
@@ -477,6 +491,14 @@ function MuteIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M4 9v6h4l5 5V4L8 9H4zm14.7-1.3-1.4-1.4-2.6 2.6-2.6-2.6-1.4 1.4 2.6 2.6-2.6 2.6 1.4 1.4 2.6-2.6 2.6 2.6 1.4-1.4-2.6-2.6z" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11 10h2v7h-2zm0-4h2v2h-2zM12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
     </svg>
   );
 }

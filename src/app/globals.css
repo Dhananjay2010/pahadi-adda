@@ -46,19 +46,7 @@ body {
   width: 100%;
   height: 100%;
 }
-.stage svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* ---------- sky, glow, stars, clouds ---------- */
-.hero-sky {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  transition: background 6s ease;
-}
+/* ---------- sky glow, stars ---------- */
 .hero-glow {
   position: absolute;
   inset: 0;
@@ -101,102 +89,72 @@ body {
   box-shadow: 0 0 4px rgba(255, 255, 255, 0.85);
   animation: twinkle 3.4s ease-in-out infinite;
 }
-.hero-clouds {
+/* ---------- photo hero (real, freely-licensed photos of Uttarakhand,
+   crossfading in a slow Ken Burns pan/zoom — see PhotoHero.tsx) ---------- */
+.photo-stack {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+.photo-layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 2.6s ease;
+}
+.photo-layer.active {
+  opacity: 1;
+}
+.photo-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Runs continuously regardless of which layer is active — a fixed loop
+     length would need to restart in sync with the crossfade, but a photo
+     simply being mid-breath the moment it fades in reads just as alive and
+     needs no coordination with the HOLD_MS timer in PhotoHero.tsx. */
+  animation: kenburns 46s ease-in-out infinite alternate;
+}
+@keyframes kenburns {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.13);
+  }
+}
+.hero-color-wash {
   position: absolute;
   inset: 0;
   z-index: 1;
-  overflow: hidden;
   pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.45;
+  transition: background 6s ease;
 }
-.hero-cloud {
-  position: absolute;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.35) 45%, rgba(255, 255, 255, 0) 75%);
-  filter: blur(3px);
-  opacity: 0.55;
-}
-.hero-cloud-1 {
-  top: 14%;
-  left: -18%;
-  width: 38%;
-  height: 9%;
-  animation: cloud-drift-slow 90s ease-in-out infinite;
-}
-.hero-cloud-2 {
-  top: 23%;
-  left: 38%;
-  width: 30%;
-  height: 7%;
-  animation: cloud-drift-slow 110s ease-in-out infinite reverse;
-}
-.hero-cloud-3 {
-  top: 9%;
-  left: 64%;
-  width: 26%;
-  height: 6%;
-  animation: cloud-drift-slow 75s ease-in-out infinite;
-  animation-delay: -20s;
-}
-@keyframes cloud-drift-slow {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  50% {
-    transform: translateX(14vw);
-  }
-}
-.hero-mountains {
+.hero-vignette {
   position: absolute;
   inset: 0;
   z-index: 2;
-}
-.door-halo {
-  transition: opacity 6s ease;
-  opacity: calc(0.5 + var(--night, 0) * 0.5);
-}
-.god-ray-wrap {
-  transition: opacity 6s ease;
-  opacity: calc(0.25 + var(--glow, 0) * 0.75);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 48%, transparent 40%, rgba(4, 4, 10, 0.4) 100%),
+    linear-gradient(180deg, rgba(4, 4, 10, 0.32) 0%, transparent 22%, transparent 58%, rgba(4, 4, 10, 0.58) 100%);
 }
 
 /* ---------- parallax depth ---------- */
 /* --px/--py (roughly -1..1) are set on .hero-viewport by useParallax on
-   pointer move. Each tier multiplies them differently so far things barely
-   shift and near things shift a lot — real depth, not one flat plane.
-   Deliberately only the `translate` property, never `animation` — many
-   depth-tagged elements (flags, clouds, birds) already run their own
-   `transform`-animating keyframes, and a second animation here would just
-   silently win the cascade and cancel theirs out. `translate` composes
-   with `transform` safely instead of fighting over it. On touch devices
-   --px/--py stay unset (0), and each element's own animation (or the
-   idle-sway helper below) still gives it life without the mouse. */
-.stage .depth-far {
-  translate: calc(var(--px, 0) * 5px) calc(var(--py, 0) * 3px);
-}
+   pointer move; .depth-mid translates the whole photo stack a little as the
+   pointer moves, giving the background a sense of depth against the fixed
+   topbar/card. Deliberately only the `translate` property, never
+   `animation` — the photo layers already run their own kenburns keyframes,
+   and a second animation here would just silently win the cascade and
+   cancel that out. `translate` composes with `transform` safely instead of
+   fighting over it. On touch devices --px/--py stay unset (0). */
 .stage .depth-mid {
   translate: calc(var(--px, 0) * 13px) calc(var(--py, 0) * 7px);
-}
-.stage .depth-near {
-  translate: calc(var(--px, 0) * 24px) calc(var(--py, 0) * 13px);
-}
-
-/* For depth-tagged elements with no animation of their own (static
-   mountain/silhouette layers) — a slow independent idle drift so the
-   scene has some baseline motion even with no mouse and nothing else
-   animating that layer. Never combine with an element that already has
-   its own transform animation (flagline, cloud-drift, bird-flock, etc.). */
-.stage .idle-sway {
-  animation: idle-sway 40s ease-in-out infinite;
-}
-@keyframes idle-sway {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(-7px, 3px);
-  }
 }
 
 /* ---------- mist ---------- */
@@ -279,22 +237,6 @@ body {
   animation: bird-flock-drift 75s linear infinite;
 }
 
-/* ---------- god rays (shared across scenes) ---------- */
-@keyframes god-ray-sway {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: rotate(-1.2deg);
-  }
-  50% {
-    opacity: 0.85;
-    transform: rotate(1.2deg);
-  }
-}
-.stage .god-ray {
-  animation: god-ray-sway 6s ease-in-out infinite;
-}
-
 /* ---------- lighting overlay ---------- */
 .lighting-overlay {
   position: absolute;
@@ -352,25 +294,6 @@ body {
     opacity: 1;
   }
 }
-.stage .star {
-  animation: twinkle 3.4s ease-in-out infinite;
-  transform-origin: center;
-}
-
-@keyframes sway {
-  0%,
-  100% {
-    transform: rotate(-1.4deg);
-  }
-  50% {
-    transform: rotate(1.4deg);
-  }
-}
-.stage .flagline {
-  animation: sway 4.5s ease-in-out infinite;
-  transform-origin: top center;
-}
-
 @keyframes flicker {
   0%,
   100% {
@@ -386,122 +309,6 @@ body {
     r: 5.4;
   }
 }
-.stage .diya {
-  animation: flicker 1.8s ease-in-out infinite;
-}
-
-@keyframes smoke-rise {
-  0% {
-    opacity: 0;
-    transform: translateY(0) scaleY(0.7);
-  }
-  15% {
-    opacity: 0.35;
-  }
-  80% {
-    opacity: 0.12;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-30px) scaleY(1.15);
-  }
-}
-.stage .smoke {
-  animation: smoke-rise 4.5s ease-in infinite;
-  transform-origin: bottom center;
-}
-
-@keyframes bird-glide {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(14px, -5px);
-  }
-}
-.stage .bird {
-  animation: bird-glide 6s ease-in-out infinite;
-}
-
-@keyframes shimmer-drift {
-  0% {
-    transform: translateX(-8%);
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  100% {
-    transform: translateX(8%);
-    opacity: 0.5;
-  }
-}
-.stage .shimmer {
-  animation: shimmer-drift 5s ease-in-out infinite alternate;
-}
-
-@keyframes chimney-smoke {
-  0% {
-    opacity: 0;
-    transform: translate(0, 0) scale(0.6);
-  }
-  20% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(8px, -46px) scale(1.3);
-  }
-}
-.stage .chimney-smoke {
-  animation: chimney-smoke 3.6s ease-out infinite;
-}
-
-@keyframes flower-sway {
-  0%,
-  100% {
-    transform: rotate(-4deg);
-  }
-  50% {
-    transform: rotate(4deg);
-  }
-}
-.stage .flower-cluster {
-  animation: flower-sway 3.2s ease-in-out infinite;
-  transform-origin: bottom center;
-}
-
-@keyframes ripple-out {
-  0% {
-    r: 3;
-    opacity: 0.45;
-  }
-  100% {
-    r: 46;
-    opacity: 0;
-  }
-}
-.stage .ripple {
-  animation: ripple-out 3.6s ease-out infinite;
-  fill: none;
-  stroke: #f0c48a;
-  stroke-width: 1.5;
-}
-
-@keyframes cloud-drift {
-  0%,
-  100% {
-    transform: translateX(-24px);
-  }
-  50% {
-    transform: translateX(24px);
-  }
-}
-.stage .cloud-drift {
-  animation: cloud-drift 46s ease-in-out infinite;
-}
-
 /* ---------- top bar ---------- */
 .topbar {
   position: absolute;
@@ -608,6 +415,33 @@ body {
   width: 14px;
   height: 14px;
   flex: none;
+}
+.credits-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 10, 8, 0.5);
+  border: 1px solid rgba(245, 236, 219, 0.18);
+  backdrop-filter: blur(6px);
+  color: var(--text-warm);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.credits-btn:hover {
+  background: rgba(237, 169, 58, 0.16);
+  border-color: rgba(237, 169, 58, 0.5);
+  transform: translateY(-1px);
+}
+.credits-btn svg {
+  width: 15px;
+  height: 15px;
 }
 .share-toast {
   position: absolute;
@@ -1464,53 +1298,82 @@ body {
   height: 12px;
 }
 
+/* ---------- photo credits ---------- */
+.credits-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  z-index: 9;
+  width: min(84vw, 300px);
+  max-height: min(60vh, 380px);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: panel-in 0.2s ease both;
+}
+.credits-list {
+  overflow-y: auto;
+  padding: 6px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.credits-item a {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-warm);
+  text-decoration: none;
+}
+.credits-item a:hover {
+  color: var(--marigold);
+  text-decoration: underline;
+}
+.credits-meta {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .star,
-  .flagline,
-  .diya,
   .particle,
   .card,
   .meta,
   .play-btn.is-playing,
   .chat-panel,
   .playlist-panel,
+  .credits-panel,
   .sparkle-mote,
   .reaction-emoji,
-  .ripple,
-  .cloud-drift,
   .track-toast,
   .celestial,
   .celestial-sun,
   .celestial-moon,
-  .depth-far,
   .depth-mid,
-  .depth-near,
   .mist-bank,
   .shooting-star,
-  .god-ray,
-  .bird-flock,
-  .hero-cloud-1,
-  .hero-cloud-2,
-  .hero-cloud-3,
+  .photo-layer img,
   .star-dot {
     animation: none !important;
   }
   .celestial {
     transform: translate(-50%, -50%);
   }
-  .stage .depth-far,
-  .stage .depth-mid,
-  .stage .depth-near {
+  .stage .depth-mid {
     translate: none;
   }
   .shooting-star {
     display: none;
   }
-  .hero-sky,
   .hero-glow,
   .hero-stars,
-  .door-halo,
-  .god-ray-wrap {
+  .hero-color-wash,
+  .photo-layer {
     transition: none;
   }
 }
@@ -1548,7 +1411,8 @@ body {
     justify-content: center;
   }
   .chat-panel,
-  .playlist-panel {
+  .playlist-panel,
+  .credits-panel {
     right: 10px;
     left: 10px;
     width: auto;

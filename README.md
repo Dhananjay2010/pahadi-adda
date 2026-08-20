@@ -20,14 +20,18 @@ someone new joins, and can chat with whoever else is around.
   browser lands on the same track independently, with no server needed for
   that part. Anyone who manually skips/scrubs breaks off from the shared
   schedule for their own session (as expected) but keeps listening normally.
-- **Background** — one layered SVG Himalayan scene (`src/components/HeroScene.tsx`):
-  atmospheric-perspective mountain ridges with clipped snow-cap highlights, a
-  hill temple with prayer flags and diya lamps, drifting clouds/mist, and a
-  starfield. Its sky gradient, star/milky-way opacity, and horizon glow all
-  come from `src/lib/timePalette.ts`, interpolated continuously from the
-  visitor's real local hour (`src/hooks/useTimeOfDay.ts`) — dawn, midday,
-  golden hour, dusk, and night are all the same scene, just lit differently,
-  so there's nothing to pick and nothing that looks stale.
+- **Background** — a crossfading slideshow of six real, freely-licensed
+  photos of Uttarakhand (`src/components/PhotoHero.tsx`,
+  `src/lib/heroPhotos.ts`): a sunrise peak, Kedarnath temple, a terraced
+  Garhwal village, a river sunset, a Ganga aarti at dusk, and a starlit
+  Himalayan night, sourced from Wikimedia Commons and credited in-app via the
+  ⓘ button (`src/components/PhotoCredits.tsx`). Each photo holds for ~9s with
+  a slow Ken Burns pan/zoom, then crossfades to the next, cycling in a fixed
+  dawn-to-night order; the opening photo is picked to match the visitor's
+  real local hour. On top, a time-of-day color wash, horizon glow, and
+  starfield (from `src/lib/timePalette.ts`, interpolated continuously via
+  `src/hooks/useTimeOfDay.ts`) tie the differently-lit photos into one
+  believable day, and a fixed vignette keeps the topbar/card text legible.
 - **Live presence + join toasts** — powered by Supabase Realtime's
   [Presence](https://supabase.com/docs/guides/realtime/presence) feature
   (`src/hooks/usePresence.ts`). Each browser tab tracks itself in a shared
@@ -145,7 +149,8 @@ src/
     twitter-image.tsx           re-exports opengraph-image.tsx for Twitter
   components/
     PahadiAdda.tsx           main client component: playback, controls, layout
-    HeroScene.tsx              the mountain/temple background art
+    PhotoHero.tsx              crossfading Ken Burns photo slideshow background
+    PhotoCredits.tsx            photo attribution panel (ⓘ button)
     MistLayer.tsx, CelestialBody.tsx, ShootingStar.tsx  shared atmosphere, sun/moon arc
     AmbientParticles.tsx        drifting ember/firefly atmosphere
     ReactionBursts.tsx           floating diya reactions
@@ -159,6 +164,7 @@ src/
     useTimeOfDay.ts                local hour, updated once a minute
   lib/
     playlist.ts                 curated song list + shared-schedule math
+    heroPhotos.ts                 hero photo list + credits + time-of-day picker
     timePalette.ts                sky/star/glow color interpolation by hour
     geo.ts                        shared geo-lookup helper (presence + chat)
     supabase.ts                    Supabase client
