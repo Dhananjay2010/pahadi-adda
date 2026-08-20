@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { fetchGeo, placeLabel } from "@/lib/geo";
+import { fetchGeo, placeLabel, type Geo } from "@/lib/geo";
 
 const TABLE = "messages";
 const HISTORY_LIMIT = 50;
@@ -42,7 +42,11 @@ export function useChat() {
   const [loaded, setLoaded] = useState(false);
   const [cooldown, setCooldown] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const placeRef = useRef<string>("");
+  // A promise, not a ref set from a fire-and-forget .then(): sendMessage
+  // below awaits this directly, so a message typed in the first instant
+  // after mount still carries the real place instead of racing the lookup
+  // and silently sending null.
+  const geoPromiseRef = useRef<Promise<Geo> | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -61,9 +65,7 @@ export function useChat() {
       }
     })();
 
-    fetchGeo().then((geo) => {
-      placeRef.current = placeLabel(geo);
-    });
+    geoPromiseRef.current = fetchGeo();
 
     const channel = supabase
       .channel("pahadi-adda-chat")
@@ -90,12 +92,15 @@ export function useChat() {
     setCooldown(true);
     setTimeout(() => setCooldown(false), SEND_COOLDOWN_MS);
 
+    const geo = geoPromiseRef.current ? await geoPromiseRef.current : null;
+    const place = geo ? placeLabel(geo) : null;
+
     // .insert() resolves with { error } instead of throwing on a Postgres
     // rejection (RLS, constraint, etc.) — without checking it, a failed
     // send looks identical to a successful one: no error, no message.
     const { error: insertError } = await supabase.from(TABLE).insert({
       author: author.trim().slice(0, 30) || "पहाड़ी",
-      place: placeRef.current || null,
+      place,
       content: trimmed,
     });
 
