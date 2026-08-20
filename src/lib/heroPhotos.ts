@@ -11,12 +11,13 @@ export type HeroMedia = {
 };
 
 // Real, freely-licensed photographs of Uttarakhand (Wikimedia Commons) plus a
-// couple of licensed Himalayan-forest video clips (Mixkit — not verified as
+// few licensed Himalayan-forest/valley video clips (Mixkit — not verified as
 // shot in Uttarakhand itself, unlike the geotagged photos), ordered to read as
-// one day: sunrise peak -> misty forest -> temple -> village -> green hills ->
-// river sunset -> aarti dusk -> starlit night, then loops. Cycling always
-// follows this order rather than jumping randomly, so the slideshow itself
-// feels like a day passing.
+// one day: sunrise peak -> misty forest -> temple -> snowy Auli -> glacial
+// valley -> Valley of Flowers -> village -> green hills -> river sunsets ->
+// aarti dusk -> starlit night, then loops. Cycling always follows this order
+// rather than jumping randomly, so the slideshow itself feels like a day
+// passing.
 export const HERO_MEDIA: HeroMedia[] = [
   {
     id: "dawn-chandrashila",
@@ -38,7 +39,7 @@ export const HERO_MEDIA: HeroMedia[] = [
     src: "/videos/hero/forest-mist-sunrise.mp4",
     poster: "/videos/hero/forest-mist-sunrise-poster.jpg",
     alt: "हिमालय के जंगलों पर सुबह की धुंध",
-    hour: 9,
+    hour: 8.5,
     credit: {
       title: "Forest covered by mist at sunrise from the heights",
       author: "Mixkit",
@@ -52,7 +53,7 @@ export const HERO_MEDIA: HeroMedia[] = [
     type: "photo",
     src: "/images/hero/day-kedarnath.jpg",
     alt: "केदारनाथ मंदिर, हिमालय की गोद में",
-    hour: 11,
+    hour: 10,
     credit: {
       title: "Panorama, Kedarnath Temple",
       author: "Surendra 1999",
@@ -62,11 +63,55 @@ export const HERO_MEDIA: HeroMedia[] = [
     },
   },
   {
+    id: "day-auli-snow",
+    type: "photo",
+    src: "/images/hero/day-auli-snow.jpg",
+    alt: "औली से बर्फ़ीली हिमालय चोटियों का दृश्य",
+    hour: 11.5,
+    credit: {
+      title: "Snow-capped peaks above Auli",
+      author: "Srijan96",
+      source: "https://commons.wikimedia.org/wiki/File:Auli_view.jpg",
+      license: "CC BY-SA 4.0",
+      platform: "Wikimedia Commons",
+    },
+  },
+  {
+    id: "river-valley",
+    type: "video",
+    src: "/videos/hero/river-valley.mp4",
+    poster: "/videos/hero/river-valley-poster.jpg",
+    alt: "हिमालय की हरी-भरी घाटी में बहती नदी",
+    hour: 12.5,
+    credit: {
+      title: "Aerial view of lush river valley and snowy mountains",
+      author: "Mixkit",
+      source: "https://mixkit.co/free-stock-video/aerial-view-of-lush-river-valley-and-snowy-mountains-15919/",
+      license: "Mixkit Stock Video License",
+      platform: "Mixkit (stock footage, not shot in Uttarakhand)",
+    },
+  },
+  {
+    id: "day-valley-of-flowers",
+    type: "photo",
+    src: "/images/hero/day-valley-of-flowers.jpg",
+    alt: "फूलों की घाटी में पुष्पावती नदी",
+    hour: 13.5,
+    credit: {
+      title: "Pushpawati river inside the Valley of Flowers",
+      author: "Daniel Romanson",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Pushpawati_river_inside_the_Valley_of_Flowers_Uttarakhand_I.jpg",
+      license: "CC0",
+      platform: "Wikimedia Commons",
+    },
+  },
+  {
     id: "day-village",
     type: "photo",
     src: "/images/hero/day-village.jpg",
     alt: "गढ़वाल की सीढ़ीदार पहाड़ी बस्ती",
-    hour: 14,
+    hour: 15,
     credit: {
       title: "Terraced hillside village, Garhwal",
       author: "Paul Hamilton",
@@ -82,7 +127,7 @@ export const HERO_MEDIA: HeroMedia[] = [
     src: "/videos/hero/lush-green-mountains.mp4",
     poster: "/videos/hero/lush-green-mountains-poster.jpg",
     alt: "बादलों से घिरी हरी-भरी पहाड़ियाँ",
-    hour: 16,
+    hour: 16.5,
     credit: {
       title: "Lush green mountains under cloudy skies",
       author: "Mixkit",
@@ -103,6 +148,20 @@ export const HERO_MEDIA: HeroMedia[] = [
       source:
         "https://commons.wikimedia.org/wiki/File:Sunset_over_the_Alaknanda_River_in_Srinagar_Garhwal,_Uttarakhand.jpg",
       license: "CC0",
+      platform: "Wikimedia Commons",
+    },
+  },
+  {
+    id: "dusk-lakshman-jhula",
+    type: "photo",
+    src: "/images/hero/dusk-lakshman-jhula.jpg",
+    alt: "ऋषिकेश में लक्ष्मण झूला पर सूर्यास्त",
+    hour: 18.5,
+    credit: {
+      title: "Sunset over Lakshman Jhula, Rishikesh",
+      author: "Tylersundance",
+      source: "https://commons.wikimedia.org/wiki/File:Sunset_-_Lakshman_Jhula.jpg",
+      license: "CC BY-SA 3.0",
       platform: "Wikimedia Commons",
     },
   },
