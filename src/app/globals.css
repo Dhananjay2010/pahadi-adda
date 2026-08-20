@@ -660,6 +660,14 @@ body {
   width: 16px;
   height: 16px;
 }
+.seek-btn {
+  width: 28px;
+  height: 28px;
+}
+.seek-btn svg {
+  width: 20px;
+  height: 20px;
+}
 .play-btn {
   width: 42px;
   height: 42px;
@@ -799,50 +807,6 @@ body {
   border-radius: 50%;
   background: var(--marigold);
   flex: none;
-}
-
-/* ---------- celestial body (sun/moon arcing with real time) ---------- */
-.celestial {
-  position: absolute;
-  z-index: 1;
-  width: 54px;
-  height: 54px;
-  transition:
-    left 4s ease,
-    top 4s ease;
-  pointer-events: none;
-  animation: celestial-bob 7s ease-in-out infinite;
-}
-.celestial-sun,
-.celestial-moon {
-  width: 100%;
-  height: 100%;
-  display: block;
-  animation: celestial-glow 5s ease-in-out infinite;
-}
-@keyframes celestial-bob {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) translateY(0);
-  }
-  50% {
-    transform: translate(-50%, -50%) translateY(-8px);
-  }
-}
-@keyframes celestial-glow {
-  0%,
-  100% {
-    opacity: 0.88;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-@media (max-width: 480px) {
-  .celestial {
-    width: 40px;
-    height: 40px;
-  }
 }
 
 /* ---------- ambient particles ---------- */
@@ -1352,9 +1316,6 @@ body {
   .sparkle-mote,
   .reaction-emoji,
   .track-toast,
-  .celestial,
-  .celestial-sun,
-  .celestial-moon,
   .depth-mid,
   .mist-bank,
   .shooting-star,
@@ -1362,9 +1323,6 @@ body {
   .photo-layer video,
   .star-dot {
     animation: none !important;
-  }
-  .celestial {
-    transform: translate(-50%, -50%);
   }
   .stage .depth-mid {
     translate: none;
