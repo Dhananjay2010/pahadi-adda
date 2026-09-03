@@ -37,7 +37,12 @@ export default function PlaylistPanel({
                 </span>
                 <span className="playlist-item-text">
                   <span className="playlist-item-dev">{track.dev}</span>
-                  <span className="playlist-item-lat">{track.lat}</span>
+                  <span className="playlist-item-lat">
+                    <span className="playlist-item-name">{track.lat}</span>
+                    <span className="playlist-item-views">
+                      {formatViews(track.views)} व्यू
+                    </span>
+                  </span>
                 </span>
               </button>
               {configured && (
@@ -58,6 +63,14 @@ export default function PlaylistPanel({
       </div>
     </div>
   );
+}
+
+/** YouTube view counts in the Indian करोड़/लाख/हज़ार scale. */
+function formatViews(views: number) {
+  if (views >= 1e7) return `${(views / 1e7).toFixed(1)} करोड़`;
+  if (views >= 1e5) return `${(views / 1e5).toFixed(1)} लाख`;
+  if (views >= 1e3) return `${(views / 1e3).toFixed(1)} हज़ार`;
+  return `${views}`;
 }
 
 function PlayingIcon() {

@@ -9,12 +9,14 @@ someone new joins, and can chat with whoever else is around.
 
 ## How it works
 
-- **Playback** — 16 curated Garhwali/Kumaoni songs play through a real,
-  visible embedded YouTube player (see
+- **Playback** — 67 curated Garhwali/Kumaoni/Jaunsari songs play through a
+  real, visible embedded YouTube player (see
   [Why the player is visible](#why-the-player-is-visible) below), driven by
   custom controls. There's no licensed audio hosted here. The list lives in
-  `src/lib/playlist.ts` — add more by appending `{ id, videoId, dev, lat,
-  assumedDuration }` entries.
+  `src/lib/playlist.ts`, ordered by YouTube view count (most-watched first,
+  counts read off YouTube in September 2026 and shown in the playlist panel)
+  — add more by appending `{ id, videoId, dev, lat, assumedDuration, views }`
+  entries and re-sorting by `views`.
 - **Shared "sync"** — which song is "current" is computed from wall-clock
   time against a fixed schedule (`src/lib/playlist.ts`), so every visitor's
   browser lands on the same track independently, with no server needed for

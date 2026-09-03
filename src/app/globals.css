@@ -1225,11 +1225,22 @@ body {
   color: var(--marigold);
 }
 .playlist-item-lat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   font-size: 10.5px;
   color: var(--text-dim);
+}
+.playlist-item-name {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.playlist-item-views {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: rgba(237, 169, 58, 0.7);
 }
 .playlist-item-request {
   flex: none;
