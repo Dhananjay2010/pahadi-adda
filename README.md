@@ -17,6 +17,22 @@ someone new joins, and can chat with whoever else is around.
   counts read off YouTube in September 2026 and shown in the playlist panel)
   — add more by appending `{ id, videoId, dev, lat, assumedDuration, views }`
   entries and re-sorting by `views`.
+- **Watching, not just listening** — the embedded player doubles as a video
+  view: the ▣ button on the card expands that *same* player into a 16:9
+  stage above the track title, so anyone who wants to watch the video stays
+  on the site instead of leaving for YouTube. It's a CSS change on the card
+  (`.card.watching` in `src/app/globals.css`) rather than a second player —
+  the iframe is never remounted, so the song plays straight through the
+  switch — and the choice is remembered per browser.
+- **Shuffle** — the ⤬ button next to the diya reshuffles the play order
+  (Fisher-Yates over the whole list, with the current song pinned to the
+  front so turning it on never cuts a song off). Off, tracks play in the
+  view-count order above. Like skipping, it's a personal deviation from
+  what everyone else is hearing, so it lives in `localStorage` rather than
+  being shared.
+- **Keyboard** — space plays/pauses (or starts the first time), ← / → move
+  a track, `m` mutes, `s` shuffles, `v` opens the video view. Ignored while
+  typing in chat.
 - **Shared "sync"** — which song is "current" is computed from wall-clock
   time against a fixed schedule (`src/lib/playlist.ts`), so every visitor's
   browser lands on the same track independently, with no server needed for

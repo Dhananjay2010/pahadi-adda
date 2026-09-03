@@ -502,6 +502,7 @@ body {
 /* ---------- now playing card ---------- */
 .card {
   position: absolute;
+  transition: width 0.28s cubic-bezier(0.22, 0.9, 0.28, 1);
   left: 50%;
   bottom: max(26px, env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
@@ -533,6 +534,40 @@ body {
 }
 .art iframe {
   display: block;
+}
+
+/* Video mode: the same player element, restyled into a stage above the
+   track title. Nothing is remounted, so the song keeps playing across the
+   switch — .art just stops being a 96px thumbnail and takes the full row. */
+.card.watching {
+  width: min(94vw, 620px);
+}
+.card.watching .card-row {
+  flex-wrap: wrap;
+}
+.card.watching .art {
+  position: relative;
+  order: -1;
+  flex: 0 0 100%;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-height: max(140px, min(52dvh, calc(100dvh - 250px)));
+  border-radius: 12px;
+}
+/* Absolute, not `height: 100%` — the container's height comes from
+   aspect-ratio/max-height, which a percentage height can't resolve
+   against, and the iframe would sit at its 96x54 attribute ratio. */
+.card.watching .art iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.openyt.on {
+  background: rgba(237, 169, 58, 0.22);
+  border-color: rgba(237, 169, 58, 0.55);
+  color: var(--marigold);
 }
 .meta {
   min-width: 0;
@@ -628,10 +663,18 @@ body {
   flex: none;
 }
 .reaction-btn,
-.mute-btn {
+.mute-btn,
+.shuffle-btn {
   width: 30px;
   height: 30px;
   font-size: 15px;
+}
+.shuffle-btn.on {
+  background: rgba(237, 169, 58, 0.22);
+  color: var(--marigold);
+}
+.shuffle-btn.on:hover {
+  background: rgba(237, 169, 58, 0.3);
 }
 .volume-slider {
   width: 56px;
@@ -1344,7 +1387,8 @@ body {
   .hero-glow,
   .hero-stars,
   .hero-color-wash,
-  .photo-layer {
+  .photo-layer,
+  .card {
     transition: none;
   }
 }
@@ -1362,6 +1406,9 @@ body {
   }
   .card {
     bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 14px);
+  }
+  .card.watching {
+    width: 92vw;
   }
   .plaque-sub {
     margin-top: 5px;

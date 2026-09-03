@@ -23,6 +23,19 @@ function fmt(sec: number): string {
   return `${m}:${r < 10 ? "0" : ""}${r}`;
 }
 
+/**
+ * A Fisher-Yates shuffle of every playlist index, with `first` pulled to
+ * the front so whatever is playing right now keeps playing.
+ */
+function shuffledOrder(first: number): number[] {
+  const rest = PLAYLIST.map((_, i) => i).filter((i) => i !== first);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  return [first, ...rest];
+}
+
 export default function PahadiAdda() {
   const [initial] = useState(() => scheduleFromEpoch());
 
@@ -38,6 +51,11 @@ export default function PahadiAdda() {
   const [shareNotice, setShareNotice] = useState(false);
   const [trackToast, setTrackToast] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
+  // Video mode just restyles the card — the <YouTube> element below never
+  // moves in the tree, so the iframe is never torn down and playback runs
+  // straight through the switch.
+  const [watching, setWatching] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
   // Real (player-reported) durations, once known, in place of the shipped
   // estimates — kept in state so the render below can read it safely, and
   // mirrored into a ref so the timers/callbacks further down (which run
@@ -47,6 +65,11 @@ export default function PahadiAdda() {
   const currentIndexRef = useRef(initial.index);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const durationsRef = useRef<Record<string, number>>({});
+  // The order playback walks, as playlist indices. In normal mode that's
+  // just 0..n-1; shuffling replaces it with a permutation. Kept in a ref
+  // because the timers/handlers below run outside render.
+  const orderRef = useRef<number[]>(PLAYLIST.map((_, i) => i));
+  const shuffleRef = useRef(false);
 
   const { onlineCount, joinEvents, dismissJoinEvent, reactionEvents, sendReaction, dismissReactionEvent } =
     usePresence();
@@ -63,6 +86,16 @@ export default function PahadiAdda() {
       videoId: PLAYLIST[index].videoId,
       startSeconds: offsetSeconds,
     });
+  }, []);
+
+  /**
+   * Steps `step` places through the current play order and returns the
+   * playlist index that lands on, wrapping at both ends.
+   */
+  const neighbour = useCallback((step: number) => {
+    const order = orderRef.current;
+    const pos = order.indexOf(currentIndexRef.current);
+    return order[(pos + step + order.length) % order.length];
   }, []);
 
   const handleReady = useCallback((event: { target: YouTubePlayer }) => {
@@ -95,12 +128,12 @@ export default function PahadiAdda() {
   // single broken video skips itself instead of leaving every listener
   // stuck on a dead player until the schedule's next scheduled advance.
   const handleEnd = useCallback(() => {
-    const next = (currentIndexRef.current + 1) % PLAYLIST.length;
+    const next = neighbour(1);
     goToTrack(next, 0);
     // Only on auto-advance, not on a manual prev/next/select — if you
     // picked a track yourself you already know it changed.
     setTrackToast(PLAYLIST[next].dev);
-  }, [goToTrack]);
+  }, [goToTrack, neighbour]);
 
   useEffect(() => {
     if (!trackToast) return;
@@ -142,6 +175,23 @@ export default function PahadiAdda() {
         : "Pahadi Adda";
   }, [onlineCount]);
 
+  // Restore the per-browser view/order preferences from the last visit.
+  // Applied a tick after mount rather than as the initial state: this page
+  // is prerendered, and localStorage doesn't exist server-side, so seeding
+  // state from it directly would hand React a first client render that
+  // disagrees with the served HTML.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (localStorage.getItem("pahadi-adda-watching") === "1") setWatching(true);
+      if (localStorage.getItem("pahadi-adda-shuffle") === "1") {
+        shuffleRef.current = true;
+        setShuffle(true);
+        orderRef.current = shuffledOrder(currentIndexRef.current);
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, []);
+
   // First-visit hint — the whole point of this site (everyone hears the
   // same song live) is invisible unless you already know it, so say so
   // once, then never again.
@@ -163,14 +213,35 @@ export default function PahadiAdda() {
   }, [showHint, dismissHint]);
 
   const handlePrev = useCallback(() => {
-    goToTrack((currentIndexRef.current - 1 + PLAYLIST.length) % PLAYLIST.length, 0);
+    goToTrack(neighbour(-1), 0);
     playerRef.current?.playVideo();
-  }, [goToTrack]);
+  }, [goToTrack, neighbour]);
 
   const handleNext = useCallback(() => {
-    goToTrack((currentIndexRef.current + 1) % PLAYLIST.length, 0);
+    goToTrack(neighbour(1), 0);
     playerRef.current?.playVideo();
-  }, [goToTrack]);
+  }, [goToTrack, neighbour]);
+
+  // Shuffling is a personal thing, like skipping: it takes you off the
+  // order everyone else is hearing, so it's remembered per browser rather
+  // than shared. The song playing right now always stays put at the front
+  // of the new order — turning shuffle on mid-song shouldn't cut it off.
+  const handleToggleShuffle = useCallback(() => {
+    const next = !shuffleRef.current;
+    shuffleRef.current = next;
+    setShuffle(next);
+    orderRef.current = next
+      ? shuffledOrder(currentIndexRef.current)
+      : PLAYLIST.map((_, i) => i);
+    localStorage.setItem("pahadi-adda-shuffle", next ? "1" : "0");
+  }, []);
+
+  const handleToggleWatching = useCallback(() => {
+    setWatching((v) => {
+      localStorage.setItem("pahadi-adda-watching", v ? "0" : "1");
+      return !v;
+    });
+  }, []);
 
   const handlePlayPause = useCallback(() => {
     if (!playerRef.current) return;
@@ -255,11 +326,24 @@ export default function PahadiAdda() {
         handlePrev();
       } else if (e.key === "m" || e.key === "M") {
         handleToggleMute();
+      } else if (e.key === "s" || e.key === "S") {
+        handleToggleShuffle();
+      } else if (e.key === "v" || e.key === "V") {
+        handleToggleWatching();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [started, handleStart, handlePlayPause, handleNext, handlePrev, handleToggleMute]);
+  }, [
+    started,
+    handleStart,
+    handlePlayPause,
+    handleNext,
+    handlePrev,
+    handleToggleMute,
+    handleToggleShuffle,
+    handleToggleWatching,
+  ]);
 
   async function handleShare() {
     const text =
@@ -354,7 +438,7 @@ export default function PahadiAdda() {
         </div>
       )}
 
-      <div className="card">
+      <div className={`card${watching ? " watching" : ""}`}>
         <div className="card-row">
           <div className="art">
             <YouTube
@@ -382,6 +466,15 @@ export default function PahadiAdda() {
             <div className="title-dev">{track.dev}</div>
             <div className="title-lat">{track.lat}</div>
           </div>
+          <button
+            className={`openyt${watching ? " on" : ""}`}
+            onClick={handleToggleWatching}
+            title={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
+            aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
+            aria-pressed={watching}
+          >
+            {watching ? <ShrinkIcon /> : <ExpandIcon />}
+          </button>
           <button
             className="openyt"
             onClick={() => setPlaylistOpen((v) => !v)}
@@ -412,14 +505,25 @@ export default function PahadiAdda() {
         </div>
 
         <div className="controls">
-          <button
-            className="ctrl-btn reaction-btn"
-            onClick={() => sendReaction("🪔")}
-            title="दिया जलाएं"
-            aria-label="दिया जलाएं"
-          >
-            🪔
-          </button>
+          <div className="controls-side">
+            <button
+              className="ctrl-btn reaction-btn"
+              onClick={() => sendReaction("🪔")}
+              title="दिया जलाएं"
+              aria-label="दिया जलाएं"
+            >
+              🪔
+            </button>
+            <button
+              className={`ctrl-btn shuffle-btn${shuffle ? " on" : ""}`}
+              onClick={handleToggleShuffle}
+              title={shuffle ? "शफल बंद करें — क्रम से चलेगा" : "शफल करें — बेतरतीब चलेगा"}
+              aria-label={shuffle ? "शफल बंद करें" : "शफल करें"}
+              aria-pressed={shuffle}
+            >
+              <ShuffleIcon />
+            </button>
+          </div>
 
           <div className="controls-transport">
             <button className="ctrl-btn" onClick={handlePrev} aria-label="पिछला गीत">
@@ -500,10 +604,16 @@ function ListIcon() {
 
 function SeekBackIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5a7 7 0 1 1-6.32 4" strokeLinecap="round" />
-      <path d="M4 4v4h4" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="12" y="16" fontSize="7" fill="currentColor" stroke="none" textAnchor="middle" fontWeight="700">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+      <text
+        x="12"
+        y="16.4"
+        fontSize="8.5"
+        fontWeight="700"
+        textAnchor="middle"
+        fontFamily="inherit"
+      >
         5
       </text>
     </svg>
@@ -512,12 +622,46 @@ function SeekBackIcon() {
 
 function SeekForwardIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5a7 7 0 1 0 6.32 4" strokeLinecap="round" />
-      <path d="M20 4v4h-4" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="12" y="16" fontSize="7" fill="currentColor" stroke="none" textAnchor="middle" fontWeight="700">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <g transform="translate(24 0) scale(-1 1)">
+        <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+      </g>
+      <text
+        x="12"
+        y="16.4"
+        fontSize="8.5"
+        fontWeight="700"
+        textAnchor="middle"
+        fontFamily="inherit"
+      >
         5
       </text>
+    </svg>
+  );
+}
+
+function ShuffleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17 3.5 21.5 8 17 12.5V9.5h-1.9c-.9 0-1.7.42-2.24 1.13l-.9 1.2-1.25-1.66.9-1.2A5 5 0 0 1 15.1 7H17V3.5ZM3 7h3.9a5 5 0 0 1 4 2l5.13 6.84c.19.25.48.4.79.4H17V13l4.5 4.5L17 22v-3.5h-1.18c-.94 0-1.82-.44-2.39-1.2L8.3 10.46a1 1 0 0 0-.8-.4H3V7Zm0 9.94h4.5c.31 0 .6-.15.79-.4l.72-.96 1.25 1.66-.72.97a3 3 0 0 1-2.4 1.2H3v-2.47Z" />
+    </svg>
+  );
+}
+
+function ExpandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <path d="M10 9.4v5.2l4.4-2.6z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function ShrinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <path d="M7.5 12h9" strokeLinecap="round" />
     </svg>
   );
 }
