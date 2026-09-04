@@ -183,8 +183,12 @@ export default function PlaylistPanel({
                   ? "कुछ सुनाई नहीं दिया — फिर बोलिए"
                   : voice.problem === "no-mic"
                     ? "माइक से आवाज़ नहीं आ रही — दूसरा माइक चुनकर देखें"
-                    : "इस ब्राउज़र में आवाज़ पहचान नहीं चल रही — Chrome में खोलें"}
-            {voice.status !== "listening" && voice.code ? ` (${voice.code})` : ""}
+                    : voice.code === "brave"
+                      ? "Brave में आवाज़ पहचान बंद रहती है — Chrome या Safari में खोलें"
+                      : "इस ब्राउज़र में आवाज़ पहचान नहीं चल रही — Chrome में खोलें"}
+            {voice.status !== "listening" && voice.code && voice.code !== "brave"
+              ? ` (${voice.code})`
+              : ""}
           </span>
           {VOICE_LANGUAGES.map((language) => (
             <button

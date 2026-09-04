@@ -132,7 +132,13 @@ someone new joins, and can chat with whoever else is around.
   "listening" state here is however many sessions it takes: the engine is
   restarted underneath, transcripts settled in an earlier session are kept
   and prefixed to later ones, and listening ends only on a phrase that has
-  settled (1.6s), 15s of silence, a second tap, or a real error.
+  settled (1.6s), 15s of silence, a second tap, or a real error. Fragments
+  are joined by overlap rather than concatenated (`joinSpeech`), because
+  they arrive overlapping from two directions: Android Chrome re-delivers a
+  phrase it has already settled on as a fresh entry in the same result
+  list, and a restarted session often hears the tail of what was already
+  recognised. Straight concatenation turns "मीना राणा" into "मीना राणा
+  मीना राणा".
 
   Those restarts have to be watertight, which is the other half of the
   code. `stop()` and `abort()` both deliver `onend` *after* the fact, so a
@@ -143,8 +149,11 @@ someone new joins, and can chat with whoever else is around.
   stopped, and a new one waits for the device to be handed back before
   starting. A refused microphone stops immediately rather than retrying,
   and four sessions in a row that never open the microphone at all is taken
-  as a recogniser with nothing behind it (Brave ships the API with the
-  service switched off) and says so, rather than blinking forever.
+  as a recogniser with nothing behind it, rather than blinking forever.
+  Brave is the known case there — it ships the API with the recognition
+  service switched off, so every session fails no matter what — and it's
+  detected up front (`navigator.brave`) purely so the message can name it
+  instead of leaving someone to wonder.
 
   The API only takes one language at a time, so there's a हिंदी / English
   toggle next to the "listening" line, and the choice is remembered.

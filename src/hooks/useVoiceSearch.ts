@@ -51,6 +51,29 @@ export type VoiceProblem = "no-mic" | "engine" | null;
  */
 export type VoiceStage = "starting" | "mic-open" | "hearing";
 
+/**
+ * Joins two pieces of dictation without saying anything twice.
+ *
+ * Recognition arrives in overlapping fragments, from two directions.
+ * Android Chrome likes to re-deliver a phrase it has already settled on as
+ * a fresh entry in the same result list, and a session that restarts often
+ * hears the tail of the sentence that was already recognised — so naive
+ * concatenation turns "मीना राणा" into "मीना राणा मीना राणा". Anything the
+ * tail of what we have already says is dropped from the head of what's
+ * arriving.
+ */
+export function joinSpeech(base: string, addition: string): string {
+  const a = base.trim();
+  const b = addition.trim();
+  if (!b) return a;
+  if (!a) return b;
+  if (a.endsWith(b)) return a;
+  for (let n = Math.min(a.length, b.length); n > 0; n--) {
+    if (a.slice(-n) === b.slice(0, n)) return a + b.slice(n);
+  }
+  return `${a} ${b}`;
+}
+
 /** How long a phrase is given to finish before it's taken as complete. */
 const SETTLE_MS = 1600;
 /** How long to hold the microphone open with nothing being said. */
@@ -98,6 +121,21 @@ const DEAD_SESSION_LIMIT = 4;
  * detached before being aborted.
  */
 export function useVoiceSearch(onTranscript: (text: string) => void) {
+  // Brave ships the speech API with the recognition service switched off,
+  // so every session fails with a network error no matter what. Knowing
+  // that up front turns several seconds of a blinking microphone into an
+  // immediate, accurate answer. Asked once, and only used to explain a
+  // failure — never to hide the button, since Brave could enable it.
+  const braveRef = useRef(false);
+  useEffect(() => {
+    const brave = (navigator as unknown as { brave?: { isBrave?: () => Promise<boolean> } }).brave;
+    brave?.isBrave?.().then((yes) => {
+      braveRef.current = yes;
+    }).catch(() => {
+      braveRef.current = false;
+    });
+  }, []);
+
   // Safe to read the window during render: this hook only ever runs inside
   // the playlist panel, which is mounted by a click, never server-rendered.
   const [supported] = useState(() => recognitionConstructor() !== null);
@@ -120,6 +158,7 @@ export function useVoiceSearch(onTranscript: (text: string) => void) {
   // mid-phrase doesn't swallow the first half of it.
   const committedRef = useRef("");
   const sessionFinalRef = useRef("");
+  const lastEmittedRef = useRef("");
   const transcriptRef = useRef(onTranscript);
   const releasedAtRef = useRef(0);
 
@@ -215,14 +254,23 @@ export function useVoiceSearch(onTranscript: (text: string) => void) {
 
       let text = "";
       let settled = "";
+      let previous = "";
       for (let i = 0; i < event.results.length; i++) {
-        const piece = event.results[i][0].transcript;
-        text += piece;
-        if (event.results[i].isFinal) settled += piece;
+        const piece = event.results[i][0].transcript.trim();
+        // Android Chrome repeats a settled phrase as a new entry rather
+        // than replacing it, which is one of the two ways the same words
+        // used to land in the box two and three times over.
+        if (!piece || piece === previous) continue;
+        previous = piece;
+        text = joinSpeech(text, piece);
+        if (event.results[i].isFinal) settled = joinSpeech(settled, piece);
       }
-      sessionFinalRef.current = settled.trim();
-      const full = `${committedRef.current} ${text}`.replace(/\s+/g, " ").trim();
-      if (full) transcriptRef.current(full);
+      sessionFinalRef.current = settled;
+      const full = joinSpeech(committedRef.current, text).replace(/\s+/g, " ").trim();
+      if (full && full !== lastEmittedRef.current) {
+        lastEmittedRef.current = full;
+        transcriptRef.current(full);
+      }
 
       // Every word heard pushes back both the "have they finished?" and the
       // "is anyone there?" clocks.
@@ -246,7 +294,7 @@ export function useVoiceSearch(onTranscript: (text: string) => void) {
         case "network":
           // The recogniser couldn't reach whatever does the recognising.
           // Retrying this forever is what leaves the mic blinking.
-          finish("error", "engine", event.error);
+          finish("error", "engine", braveRef.current ? "brave" : event.error);
           return;
         default:
           // "aborted" and "no-speech" are routine; let onend decide.
@@ -262,7 +310,7 @@ export function useVoiceSearch(onTranscript: (text: string) => void) {
       recognitionRef.current = null;
 
       if (sessionFinalRef.current) {
-        committedRef.current = `${committedRef.current} ${sessionFinalRef.current}`.trim();
+        committedRef.current = joinSpeech(committedRef.current, sessionFinalRef.current);
         sessionFinalRef.current = "";
       }
       if (!wantsRef.current) return;
@@ -271,7 +319,7 @@ export function useVoiceSearch(onTranscript: (text: string) => void) {
       // giving up; one that opened it and heard silence is normal.
       deadRunRef.current = audioThisSession ? 0 : deadRunRef.current + 1;
       if (deadRunRef.current >= DEAD_SESSION_LIMIT && !heardRef.current) {
-        finish("error", sawAudioRef.current ? "engine" : "engine");
+        finish("error", "engine", braveRef.current ? "brave" : null);
         return;
       }
       timersRef.current.restart = window.setTimeout(() => beginRef.current(), RESTART_DELAY_MS);
@@ -306,6 +354,7 @@ export function useVoiceSearch(onTranscript: (text: string) => void) {
       deadRunRef.current = 0;
       committedRef.current = "";
       sessionFinalRef.current = "";
+      lastEmittedRef.current = "";
       setProblem(null);
       setCode(null);
       setStage("starting");
