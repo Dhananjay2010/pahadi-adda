@@ -114,11 +114,25 @@ someone new joins, and can chat with whoever else is around.
   mostly for phones: saying a song name beats typing Devanagari on a
   keyboard. Interim results are applied as they arrive, so the list filters
   while you're still talking, and a phrase that matches nothing local flows
-  straight into the YouTube search below. Built on the Web Speech API
-  (`src/hooks/useVoiceSearch.ts`), which only takes one language at a time
-  — so there's a हिंदी / English toggle next to the "listening" line, and
-  the choice is remembered. Browsers without the API (Firefox, at the time
-  of writing) simply don't get the button.
+  straight into the YouTube search below.
+
+  Nearly all of `src/hooks/useVoiceSearch.ts` exists to hold the microphone
+  open, because the browsers will not. Chrome ends a recognition session at
+  the first pause it hears — in practice a few hundred milliseconds after
+  the button is pressed, before anyone has begun speaking — and Safari does
+  the same while ignoring `continuous` altogether. Taken at face value that
+  is a mic that lights up and dies before you can say anything. So one
+  "listening" state here is however many sessions it takes: the engine is
+  restarted underneath, transcripts settled in an earlier session are kept
+  and prefixed to later ones, and listening ends only on a phrase that has
+  settled (1.6s), 15s of silence, a second tap, or a real error. A refused
+  microphone stops immediately rather than retrying, and a session cap
+  stops a broken engine from restarting forever.
+
+  The API only takes one language at a time, so there's a हिंदी / English
+  toggle next to the "listening" line, and the choice is remembered.
+  Browsers without the API (Firefox, at the time of writing) don't get the
+  button at all.
 - **Songs that aren't in the list** — when a search matches nothing local,
   the panel searches YouTube and offers the results to play right there
   (`src/app/api/youtube-search/route.ts`). That route reads YouTube's
