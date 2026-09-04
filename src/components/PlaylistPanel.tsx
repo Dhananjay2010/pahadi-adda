@@ -172,12 +172,19 @@ export default function PlaylistPanel({
         <div className="playlist-voice">
           <span className={voice.status === "listening" ? "playlist-voice-live" : undefined}>
             {voice.status === "listening"
-              ? "सुन रहे हैं… गीत या कलाकार का नाम बोलिए"
+              ? voice.stage === "hearing"
+                ? "सुन रहे हैं…"
+                : voice.stage === "mic-open"
+                  ? "माइक चालू है — अब बोलिए"
+                  : "माइक शुरू हो रहा है…"
               : voice.status === "denied"
                 ? "माइक की अनुमति नहीं मिली — ब्राउज़र सेटिंग में दें"
                 : voice.status === "unheard"
                   ? "कुछ सुनाई नहीं दिया — फिर बोलिए"
-                  : "अभी बोलकर खोज नहीं हो पा रही"}
+                  : voice.problem === "no-mic"
+                    ? "माइक से आवाज़ नहीं आ रही — दूसरा माइक चुनकर देखें"
+                    : "इस ब्राउज़र में आवाज़ पहचान नहीं चल रही — Chrome में खोलें"}
+            {voice.status !== "listening" && voice.code ? ` (${voice.code})` : ""}
           </span>
           {VOICE_LANGUAGES.map((language) => (
             <button

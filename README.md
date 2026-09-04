@@ -116,6 +116,13 @@ someone new joins, and can chat with whoever else is around.
   while you're still talking, and a phrase that matches nothing local flows
   straight into the YouTube search below.
 
+  While it's listening the line under the box says what the engine is
+  actually doing — starting, microphone open, or hearing words — because
+  the difference between "the microphone never opened" and "the microphone
+  is open but nothing is being recognised" is the whole diagnosis when this
+  goes wrong, and nobody can open a console on a phone. Failures name the
+  engine's own error code for the same reason.
+
   Nearly all of `src/hooks/useVoiceSearch.ts` exists to hold the microphone
   open, because the browsers will not. Chrome ends a recognition session at
   the first pause it hears — in practice a few hundred milliseconds after
@@ -125,9 +132,19 @@ someone new joins, and can chat with whoever else is around.
   "listening" state here is however many sessions it takes: the engine is
   restarted underneath, transcripts settled in an earlier session are kept
   and prefixed to later ones, and listening ends only on a phrase that has
-  settled (1.6s), 15s of silence, a second tap, or a real error. A refused
-  microphone stops immediately rather than retrying, and a session cap
-  stops a broken engine from restarting forever.
+  settled (1.6s), 15s of silence, a second tap, or a real error.
+
+  Those restarts have to be watertight, which is the other half of the
+  code. `stop()` and `abort()` both deliver `onend` *after* the fact, so a
+  session that was thrown away can wake up inside the next one and null out
+  its reference — dropping the only strong reference the live session had
+  and leaving the microphone on but deaf. Every handler therefore checks it
+  still owns the current session, sessions are detached before being
+  stopped, and a new one waits for the device to be handed back before
+  starting. A refused microphone stops immediately rather than retrying,
+  and four sessions in a row that never open the microphone at all is taken
+  as a recogniser with nothing behind it (Brave ships the API with the
+  service switched off) and says so, rather than blinking forever.
 
   The API only takes one language at a time, so there's a हिंदी / English
   toggle next to the "listening" line, and the choice is remembered.
