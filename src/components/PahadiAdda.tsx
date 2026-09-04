@@ -110,6 +110,8 @@ export default function PahadiAdda() {
   // What's actually loaded in the player — a playlist track or a guest.
   const currentVideoIdRef = useRef(PLAYLIST[initial.index].videoId);
   const diyaRef = useRef<HTMLButtonElement>(null);
+  // Whatever had focus when a panel was opened, so Esc can give it back.
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   // Volume/mute are mirrored into refs so a held-down arrow key compounds
   // properly: key repeat fires many times per frame, far faster than state
   // lands, and reading state there would apply the same step over and over.
@@ -524,6 +526,19 @@ export default function PahadiAdda() {
     setCreditsOpen(panel === "credits");
     setShortcutsOpen(panel === "shortcuts");
     if (panel !== "playlist") setFocusSearch(false);
+
+    // Closing a panel takes its contents — including whatever had focus —
+    // out of the document, and focus falls back to <body>: a keyboard user
+    // who presses Esc loses their place and has to tab in from the top
+    // again. Hand it back to whatever opened the panel, once React has
+    // actually removed it.
+    if (panel) {
+      returnFocusRef.current ??= document.activeElement as HTMLElement | null;
+      return;
+    }
+    const opener = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
   }, []);
 
   const togglePanel = useCallback(
