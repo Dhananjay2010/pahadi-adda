@@ -500,14 +500,33 @@ body {
 }
 
 /* ---------- now playing card ---------- */
-.card {
+/* The player and the playlist share one bottom-centred column, so the
+   list opens directly above the button that opens it instead of in a far
+   corner. The dock is what's anchored and sized; the card and the panel
+   are just stacked inside it. */
+.dock {
+  /* Held in a variable so the height cap below stays exact: whatever the
+     dock is lifted off the bottom by, that much less room it has. */
+  --dock-bottom: max(26px, env(safe-area-inset-bottom, 0px));
   position: absolute;
-  transition: width 0.28s cubic-bezier(0.22, 0.9, 0.28, 1);
   left: 50%;
-  bottom: max(26px, env(safe-area-inset-bottom, 0px));
+  bottom: var(--dock-bottom);
   transform: translateX(-50%);
   z-index: 6;
   width: min(92vw, 430px);
+  max-height: calc(100dvh - var(--dock-bottom) - 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: width 0.28s cubic-bezier(0.22, 0.9, 0.28, 1);
+}
+.dock.watching {
+  width: min(94vw, 620px);
+}
+.card {
+  position: relative;
+  flex: none;
+  width: 100%;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 16px;
@@ -539,13 +558,10 @@ body {
 /* Video mode: the same player element, restyled into a stage above the
    track title. Nothing is remounted, so the song keeps playing across the
    switch — .art just stops being a 96px thumbnail and takes the full row. */
-.card.watching {
-  width: min(94vw, 620px);
-}
-.card.watching .card-row {
+.dock.watching .card-row {
   flex-wrap: wrap;
 }
-.card.watching .art {
+.dock.watching .art {
   position: relative;
   order: -1;
   flex: 0 0 100%;
@@ -558,7 +574,7 @@ body {
 /* Absolute, not `height: 100%` — the container's height comes from
    aspect-ratio/max-height, which a percentage height can't resolve
    against, and the iframe would sit at its 96x54 attribute ratio. */
-.card.watching .art iframe {
+.dock.watching .art iframe {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -953,11 +969,11 @@ body {
 @keyframes card-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 18px);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 .card {
@@ -1178,13 +1194,12 @@ body {
 
 /* ---------- playlist panel ---------- */
 .playlist-panel {
-  position: absolute;
-  left: 16px;
-  top: 80px;
-  bottom: 26px;
-  z-index: 8;
-  width: min(88vw, 320px);
-  max-height: min(60vh, 460px);
+  /* Shrinks to whatever room is left above the card (the dock is capped
+     to the viewport), so a tall video view can't push it off-screen. */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(46dvh, 420px);
+  width: 100%;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 16px;
@@ -1388,7 +1403,7 @@ body {
   .hero-stars,
   .hero-color-wash,
   .photo-layer,
-  .card {
+  .dock {
     transition: none;
   }
 }
@@ -1404,10 +1419,11 @@ body {
     top: max(12%, env(safe-area-inset-top, 0px));
     padding: 0 12px;
   }
-  .card {
-    bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 14px);
+  .dock {
+    --dock-bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 14px);
   }
-  .card.watching {
+  .dock,
+  .dock.watching {
     width: 92vw;
   }
   .plaque-sub {
@@ -1429,7 +1445,6 @@ body {
     justify-content: center;
   }
   .chat-panel,
-  .playlist-panel,
   .credits-panel {
     right: 10px;
     left: 10px;

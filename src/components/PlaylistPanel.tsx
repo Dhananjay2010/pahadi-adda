@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { PLAYLIST } from "@/lib/playlist";
 import { useSongRequests } from "@/hooks/useSongRequests";
 
@@ -13,6 +14,19 @@ export default function PlaylistPanel({
   onClose: () => void;
 }) {
   const { configured, counts, hasVoted, requestSong } = useSongRequests();
+  const activeRef = useRef<HTMLDivElement | null>(null);
+  const opened = useRef(false);
+
+  // Open on whatever is playing rather than at the top of a ~90-song list:
+  // jump straight there when the panel opens, then follow along (gently) if
+  // the track changes while it's still open.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({
+      block: "center",
+      behavior: opened.current ? "smooth" : "auto",
+    });
+    opened.current = true;
+  }, [currentIndex]);
 
   return (
     <div className="playlist-panel">
@@ -29,6 +43,7 @@ export default function PlaylistPanel({
           return (
             <div
               key={track.id}
+              ref={index === currentIndex ? activeRef : undefined}
               className={`playlist-item${index === currentIndex ? " active" : ""}`}
             >
               <button className="playlist-item-select" onClick={() => onSelect(index)}>

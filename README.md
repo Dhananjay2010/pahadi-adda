@@ -9,14 +9,19 @@ someone new joins, and can chat with whoever else is around.
 
 ## How it works
 
-- **Playback** — 67 curated Garhwali/Kumaoni/Jaunsari songs play through a
+- **Playback** — 95 curated Garhwali/Kumaoni/Jaunsari songs play through a
   real, visible embedded YouTube player (see
   [Why the player is visible](#why-the-player-is-visible) below), driven by
   custom controls. There's no licensed audio hosted here. The list lives in
   `src/lib/playlist.ts`, ordered by YouTube view count (most-watched first,
   counts read off YouTube in September 2026 and shown in the playlist panel)
   — add more by appending `{ id, videoId, dev, lat, assumedDuration, views }`
-  entries and re-sorting by `views`.
+  entries and re-sorting by `views`. Nothing below a lakh of views is in
+  here: where a classic only existed as an obscure few-hundred-view
+  re-upload, it was repointed at the version people actually watch. Check
+  a new video is embeddable before adding it — a fair number of
+  Uttarakhandi uploads have embedding switched off, and those fail at
+  playback with IFrame error 150.
 - **Watching, not just listening** — the embedded player doubles as a video
   view: the ▣ button on the card expands that *same* player into a 16:9
   stage above the track title, so anyone who wants to watch the video stays
@@ -71,6 +76,11 @@ someone new joins, and can chat with whoever else is around.
   floating diya to everyone currently on the site via Supabase Realtime
   Broadcast (`src/hooks/usePresence.ts`, `src/components/ReactionBursts.tsx`).
   Ephemeral — nothing is stored, it's just a shared "someone's here" ping.
+- **The playlist panel** — opens stacked directly above the player rather
+  than in a corner of the screen (both live in one bottom-centred `.dock`,
+  `src/app/globals.css`), so the list appears where the button that opens
+  it is. It also opens scrolled to whatever is playing instead of at the
+  top of ~95 rows, and follows along if the track changes while it's open.
 - **Song requests** — an "अनुरोध करें" button next to each track in the
   playlist panel lets anyone nudge what plays next; counts are tallied over
   a rolling 6-hour window from the `song_requests` table

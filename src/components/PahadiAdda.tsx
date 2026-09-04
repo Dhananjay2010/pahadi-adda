@@ -438,153 +438,158 @@ export default function PahadiAdda() {
         </div>
       )}
 
-      <div className={`card${watching ? " watching" : ""}`}>
-        <div className="card-row">
-          <div className="art">
-            <YouTube
-              videoId={PLAYLIST[initial.index].videoId}
-              opts={{
-                width: "96",
-                height: "54",
-                playerVars: {
-                  autoplay: 1,
-                  mute: 1,
-                  controls: 1,
-                  modestbranding: 1,
-                  rel: 0,
-                  iv_load_policy: 3,
-                  playsinline: 1,
-                },
-              }}
-              onReady={handleReady}
-              onStateChange={handleStateChange}
-              onEnd={handleEnd}
-              onError={handleEnd}
-            />
-          </div>
-          <div className="meta" key={currentIndex}>
-            <div className="title-dev">{track.dev}</div>
-            <div className="title-lat">{track.lat}</div>
-          </div>
-          <button
-            className={`openyt${watching ? " on" : ""}`}
-            onClick={handleToggleWatching}
-            title={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
-            aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
-            aria-pressed={watching}
-          >
-            {watching ? <ShrinkIcon /> : <ExpandIcon />}
-          </button>
-          <button
-            className="openyt"
-            onClick={() => setPlaylistOpen((v) => !v)}
-            title="पूरी सूची देखें"
-            aria-label="पूरी सूची देखें"
-            aria-pressed={playlistOpen}
-          >
-            <ListIcon />
-          </button>
-          <a
-            className="openyt"
-            href={`https://www.youtube.com/watch?v=${track.videoId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="YouTube पर खोलें"
-            aria-label="YouTube पर खोलें"
-          >
-            <YtIcon />
-          </a>
-        </div>
-
-        <div className="seek" onClick={handleSeek}>
-          <div className="seek-fill" style={{ width: `${progressPct}%` }} />
-        </div>
-        <div className="times">
-          <span>{fmt(elapsed)}</span>
-          <span>{fmt(trackDuration)}</span>
-        </div>
-
-        <div className="controls">
-          <div className="controls-side">
-            <button
-              className="ctrl-btn reaction-btn"
-              onClick={() => sendReaction("🪔")}
-              title="दिया जलाएं"
-              aria-label="दिया जलाएं"
-            >
-              🪔
-            </button>
-            <button
-              className={`ctrl-btn shuffle-btn${shuffle ? " on" : ""}`}
-              onClick={handleToggleShuffle}
-              title={shuffle ? "शफल बंद करें — क्रम से चलेगा" : "शफल करें — बेतरतीब चलेगा"}
-              aria-label={shuffle ? "शफल बंद करें" : "शफल करें"}
-              aria-pressed={shuffle}
-            >
-              <ShuffleIcon />
-            </button>
-          </div>
-
-          <div className="controls-transport">
-            <button className="ctrl-btn" onClick={handlePrev} aria-label="पिछला गीत">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12L9 12z" /></svg>
-            </button>
-            <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(-5)} aria-label="5 सेकंड पीछे">
-              <SeekBackIcon />
-            </button>
-            <button
-              className={`ctrl-btn play-btn${isPlaying ? " is-playing" : ""}`}
-              onClick={handlePlayPause}
-              aria-label="चलाएं / रोकें"
-            >
-              {isPlaying ? (
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
-              ) : (
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-              )}
-            </button>
-            <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(5)} aria-label="5 सेकंड आगे">
-              <SeekForwardIcon />
-            </button>
-            <button className="ctrl-btn" onClick={handleNext} aria-label="अगला गीत">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l11-6z" /></svg>
-            </button>
-          </div>
-
-          <div className="controls-side">
-            <button
-              className="ctrl-btn mute-btn"
-              onClick={handleToggleMute}
-              aria-label={muted ? "अनम्यूट करें" : "म्यूट करें"}
-            >
-              {muted || volume === 0 ? <MuteIcon /> : <VolumeIcon />}
-            </button>
-            <input
-              type="range"
-              className="volume-slider"
-              min={0}
-              max={100}
-              value={muted ? 0 : volume}
-              onChange={handleVolumeChange}
-              aria-label="आवाज़"
-            />
-          </div>
-        </div>
-
-        {!started && (
-          <button className="start-overlay" onClick={handleStart}>
-            🔊 सुनना शुरू करें
-          </button>
+      {/* The playlist stacks directly above the player instead of opening in
+          a far corner of the screen: it appears right where the button that
+          opens it is, so nothing has to be chased across the viewport. */}
+      <div className={`dock${watching ? " watching" : ""}`}>
+        {playlistOpen && (
+          <PlaylistPanel
+            currentIndex={currentIndex}
+            onSelect={handleSelectTrack}
+            onClose={() => setPlaylistOpen(false)}
+          />
         )}
+        <div className="card">
+          <div className="card-row">
+            <div className="art">
+              <YouTube
+                videoId={PLAYLIST[initial.index].videoId}
+                opts={{
+                  width: "96",
+                  height: "54",
+                  playerVars: {
+                    autoplay: 1,
+                    mute: 1,
+                    controls: 1,
+                    modestbranding: 1,
+                    rel: 0,
+                    iv_load_policy: 3,
+                    playsinline: 1,
+                  },
+                }}
+                onReady={handleReady}
+                onStateChange={handleStateChange}
+                onEnd={handleEnd}
+                onError={handleEnd}
+              />
+            </div>
+            <div className="meta" key={currentIndex}>
+              <div className="title-dev">{track.dev}</div>
+              <div className="title-lat">{track.lat}</div>
+            </div>
+            <button
+              className={`openyt${watching ? " on" : ""}`}
+              onClick={handleToggleWatching}
+              title={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
+              aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
+              aria-pressed={watching}
+            >
+              {watching ? <ShrinkIcon /> : <ExpandIcon />}
+            </button>
+            <button
+              className="openyt"
+              onClick={() => setPlaylistOpen((v) => !v)}
+              title="पूरी सूची देखें"
+              aria-label="पूरी सूची देखें"
+              aria-pressed={playlistOpen}
+            >
+              <ListIcon />
+            </button>
+            <a
+              className="openyt"
+              href={`https://www.youtube.com/watch?v=${track.videoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="YouTube पर खोलें"
+              aria-label="YouTube पर खोलें"
+            >
+              <YtIcon />
+            </a>
+          </div>
+
+          <div className="seek" onClick={handleSeek}>
+            <div className="seek-fill" style={{ width: `${progressPct}%` }} />
+          </div>
+          <div className="times">
+            <span>{fmt(elapsed)}</span>
+            <span>{fmt(trackDuration)}</span>
+          </div>
+
+          <div className="controls">
+            <div className="controls-side">
+              <button
+                className="ctrl-btn reaction-btn"
+                onClick={() => sendReaction("🪔")}
+                title="दिया जलाएं"
+                aria-label="दिया जलाएं"
+              >
+                🪔
+              </button>
+              <button
+                className={`ctrl-btn shuffle-btn${shuffle ? " on" : ""}`}
+                onClick={handleToggleShuffle}
+                title={shuffle ? "शफल बंद करें — क्रम से चलेगा" : "शफल करें — बेतरतीब चलेगा"}
+                aria-label={shuffle ? "शफल बंद करें" : "शफल करें"}
+                aria-pressed={shuffle}
+              >
+                <ShuffleIcon />
+              </button>
+            </div>
+
+            <div className="controls-transport">
+              <button className="ctrl-btn" onClick={handlePrev} aria-label="पिछला गीत">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12L9 12z" /></svg>
+              </button>
+              <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(-5)} aria-label="5 सेकंड पीछे">
+                <SeekBackIcon />
+              </button>
+              <button
+                className={`ctrl-btn play-btn${isPlaying ? " is-playing" : ""}`}
+                onClick={handlePlayPause}
+                aria-label="चलाएं / रोकें"
+              >
+                {isPlaying ? (
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                )}
+              </button>
+              <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(5)} aria-label="5 सेकंड आगे">
+                <SeekForwardIcon />
+              </button>
+              <button className="ctrl-btn" onClick={handleNext} aria-label="अगला गीत">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l11-6z" /></svg>
+              </button>
+            </div>
+
+            <div className="controls-side">
+              <button
+                className="ctrl-btn mute-btn"
+                onClick={handleToggleMute}
+                aria-label={muted ? "अनम्यूट करें" : "म्यूट करें"}
+              >
+                {muted || volume === 0 ? <MuteIcon /> : <VolumeIcon />}
+              </button>
+              <input
+                type="range"
+                className="volume-slider"
+                min={0}
+                max={100}
+                value={muted ? 0 : volume}
+                onChange={handleVolumeChange}
+                aria-label="आवाज़"
+              />
+            </div>
+          </div>
+
+          {!started && (
+            <button className="start-overlay" onClick={handleStart}>
+              🔊 सुनना शुरू करें
+            </button>
+          )}
+        </div>
       </div>
 
-      {playlistOpen && (
-        <PlaylistPanel
-          currentIndex={currentIndex}
-          onSelect={handleSelectTrack}
-          onClose={() => setPlaylistOpen(false)}
-        />
-      )}
       {creditsOpen && <PhotoCredits onClose={() => setCreditsOpen(false)} />}
 
       <JoinToasts events={joinEvents} onDismiss={dismissJoinEvent} />
