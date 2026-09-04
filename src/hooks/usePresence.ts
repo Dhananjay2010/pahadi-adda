@@ -122,7 +122,13 @@ export function usePresence() {
   const sendReaction = useCallback((emoji: string) => {
     const x = Math.round((Math.random() - 0.5) * 120);
     channelRef.current?.send({ type: "broadcast", event: "reaction", payload: { emoji, x } });
-    setReactionEvents((prev) => [...prev, { id: `${Date.now()}-self`, emoji, x }]);
+    // Timestamp alone isn't unique: two taps inside the same millisecond
+    // (an easy thing to do on a button people mash) collided on the React
+    // key, and one of the two diyas was dropped instead of drawn.
+    setReactionEvents((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${Math.random()}-self`, emoji, x },
+    ]);
   }, []);
 
   const dismissReactionEvent = useCallback((id: string) => {

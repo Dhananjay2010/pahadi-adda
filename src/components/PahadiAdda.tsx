@@ -12,6 +12,7 @@ import ReactionBursts from "./ReactionBursts";
 import ChatPanel from "./ChatPanel";
 import PlaylistPanel from "./PlaylistPanel";
 import PhotoCredits from "./PhotoCredits";
+import Tooltips from "./Tooltips";
 import { usePresence } from "@/hooks/usePresence";
 import { useParallax } from "@/hooks/useParallax";
 import { PLAYLIST, scheduleFromEpoch } from "@/lib/playlist";
@@ -71,6 +72,7 @@ export default function PahadiAdda() {
   const orderRef = useRef<number[]>(PLAYLIST.map((_, i) => i));
   const shuffleRef = useRef(false);
   const startedRef = useRef(false);
+  const diyaRef = useRef<HTMLButtonElement>(null);
   // Volume/mute are mirrored into refs so a held-down arrow key compounds
   // properly: key repeat fires many times per frame, far faster than state
   // lands, and reading state there would apply the same step over and over.
@@ -468,7 +470,7 @@ export default function PahadiAdda() {
             <button
               className="sharelink"
               onClick={handleShare}
-              title="दोस्तों को यहाँ बुलाओ"
+              data-tip="दोस्तों को यहाँ बुलाओ"
               aria-label="शेयर करें"
             >
               <ShareIcon />
@@ -479,7 +481,7 @@ export default function PahadiAdda() {
           <button
             className="credits-btn"
             onClick={() => setCreditsOpen((v) => !v)}
-            title="फोटो किसकी हैं, देखें"
+            data-tip="फोटो किसकी हैं, देखें"
             aria-label="फोटो साभार"
             aria-pressed={creditsOpen}
           >
@@ -490,7 +492,7 @@ export default function PahadiAdda() {
             href="https://www.youtube.com/results?search_query=pahadi+uttarakhandi+songs"
             target="_blank"
             rel="noopener noreferrer"
-            title="YouTube पर और पहाड़ी गीत खोजें"
+            data-tip="YouTube पर और पहाड़ी गीत खोजें"
           >
             <YtIcon />
             <span>YouTube पर सुनो</span>
@@ -552,7 +554,7 @@ export default function PahadiAdda() {
                 <button
                   className="art-expand"
                   onClick={handleToggleWatching}
-                  title="वीडियो देखें (V)"
+                  data-tip="वीडियो देखें (V)"
                   aria-label="वीडियो देखें"
                 >
                   <ExpandIcon />
@@ -566,7 +568,7 @@ export default function PahadiAdda() {
             <button
               className={`openyt${watching ? " on" : ""}`}
               onClick={handleToggleWatching}
-              title={watching ? "वीडियो छोटा करें (V)" : "वीडियो भी देखें (V)"}
+              data-tip={watching ? "वीडियो छोटा करें (V)" : "वीडियो भी देखें (V)"}
               aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
               aria-pressed={watching}
             >
@@ -575,7 +577,7 @@ export default function PahadiAdda() {
             <button
               className="openyt"
               onClick={() => setPlaylistOpen((v) => !v)}
-              title="पूरी सूची देखें (सब गीत)"
+              data-tip="पूरी सूची देखें (सब गीत)"
               aria-label="पूरी सूची देखें"
               aria-pressed={playlistOpen}
             >
@@ -586,14 +588,14 @@ export default function PahadiAdda() {
               href={`https://www.youtube.com/watch?v=${track.videoId}`}
               target="_blank"
               rel="noopener noreferrer"
-              title="यह गीत YouTube पर खोलें"
+              data-tip="यह गीत YouTube पर खोलें"
               aria-label="YouTube पर खोलें"
             >
               <YtIcon />
             </a>
           </div>
 
-          <div className="seek" onClick={handleSeek} title="गीत में कहीं भी जाएं">
+          <div className="seek" onClick={handleSeek} data-tip="गीत में कहीं भी जाएं">
             <div className="seek-fill" style={{ width: `${progressPct}%` }} />
           </div>
           <div className="times">
@@ -604,9 +606,10 @@ export default function PahadiAdda() {
           <div className="controls">
             <div className="controls-side">
               <button
+                ref={diyaRef}
                 className="ctrl-btn reaction-btn"
                 onClick={() => sendReaction("🪔")}
-                title="सबके लिए दिया जलाएं"
+                data-tip="सबके लिए दिया जलाएं"
                 aria-label="दिया जलाएं"
               >
                 🪔
@@ -614,7 +617,7 @@ export default function PahadiAdda() {
               <button
                 className={`ctrl-btn shuffle-btn${shuffle ? " on" : ""}`}
                 onClick={handleToggleShuffle}
-                title={shuffle ? "शफल बंद करें — क्रम से चलेगा (S)" : "शफल करें — बेतरतीब चलेगा (S)"}
+                data-tip={shuffle ? "शफल बंद करें — क्रम से चलेगा (S)" : "शफल करें — बेतरतीब चलेगा (S)"}
                 aria-label={shuffle ? "शफल बंद करें" : "शफल करें"}
                 aria-pressed={shuffle}
               >
@@ -626,7 +629,7 @@ export default function PahadiAdda() {
               <button
                 className="ctrl-btn"
                 onClick={handlePrev}
-                title="पिछला गीत (Shift + ← या P)"
+                data-tip="पिछला गीत (Shift + ← या P)"
                 aria-label="पिछला गीत"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12L9 12z" /></svg>
@@ -634,7 +637,7 @@ export default function PahadiAdda() {
               <button
                 className="ctrl-btn seek-btn"
                 onClick={() => handleSeekBy(-5)}
-                title="5 सेकंड पीछे (←)"
+                data-tip="5 सेकंड पीछे (←)"
                 aria-label="5 सेकंड पीछे"
               >
                 <SeekBackIcon />
@@ -642,7 +645,7 @@ export default function PahadiAdda() {
               <button
                 className={`ctrl-btn play-btn${isPlaying ? " is-playing" : ""}`}
                 onClick={handlePlayPause}
-                title={isPlaying ? "रोकें (Space)" : "चलाएं (Space)"}
+                data-tip={isPlaying ? "रोकें (Space)" : "चलाएं (Space)"}
                 aria-label="चलाएं / रोकें"
               >
                 {isPlaying ? (
@@ -654,7 +657,7 @@ export default function PahadiAdda() {
               <button
                 className="ctrl-btn seek-btn"
                 onClick={() => handleSeekBy(5)}
-                title="5 सेकंड आगे (→)"
+                data-tip="5 सेकंड आगे (→)"
                 aria-label="5 सेकंड आगे"
               >
                 <SeekForwardIcon />
@@ -662,7 +665,7 @@ export default function PahadiAdda() {
               <button
                 className="ctrl-btn"
                 onClick={handleNext}
-                title="अगला गीत (Shift + → या N)"
+                data-tip="अगला गीत (Shift + → या N)"
                 aria-label="अगला गीत"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l11-6z" /></svg>
@@ -673,7 +676,7 @@ export default function PahadiAdda() {
               <button
                 className="ctrl-btn mute-btn"
                 onClick={handleToggleMute}
-                title={muted ? "आवाज़ वापस लाएं (M)" : "म्यूट करें (M)"}
+                data-tip={muted ? "आवाज़ वापस लाएं (M)" : "म्यूट करें (M)"}
                 aria-label={muted ? "अनम्यूट करें" : "म्यूट करें"}
               >
                 {muted || volume === 0 ? <MuteIcon /> : <VolumeIcon />}
@@ -685,7 +688,7 @@ export default function PahadiAdda() {
                 max={100}
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
-                title="आवाज़ (↑ / ↓)"
+                data-tip="आवाज़ (↑ / ↓)"
                 aria-label="आवाज़"
               />
             </div>
@@ -695,7 +698,7 @@ export default function PahadiAdda() {
             <button
               className="start-overlay"
               onClick={handleStart}
-              title="चलाना शुरू करें (Space)"
+              data-tip="चलाना शुरू करें (Space)"
             >
               🔊 सुनना शुरू करें
             </button>
@@ -706,8 +709,13 @@ export default function PahadiAdda() {
       {creditsOpen && <PhotoCredits onClose={() => setCreditsOpen(false)} />}
 
       <JoinToasts events={joinEvents} onDismiss={dismissJoinEvent} />
-      <ReactionBursts events={reactionEvents} onDismiss={dismissReactionEvent} />
+      <ReactionBursts
+        events={reactionEvents}
+        originRef={diyaRef}
+        onDismiss={dismissReactionEvent}
+      />
       <ChatPanel />
+      <Tooltips />
     </>
   );
 }

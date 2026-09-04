@@ -7,7 +7,7 @@ export default function PhotoCredits({ onClose }: { onClose: () => void }) {
     <div className="credits-panel" role="dialog" aria-label="फोटो साभार">
       <div className="chat-header">
         <span>फोटो साभार</span>
-        <button className="chat-close" onClick={onClose} title="बंद करें" aria-label="बंद करें">
+        <button className="chat-close" onClick={onClose} data-tip="बंद करें" aria-label="बंद करें">
           ✕
         </button>
       </div>
@@ -18,7 +18,7 @@ export default function PhotoCredits({ onClose }: { onClose: () => void }) {
               href={media.credit.source}
               target="_blank"
               rel="noopener noreferrer"
-              title={`${media.credit.platform} पर मूल फोटो देखें`}
+              data-tip={`${media.credit.platform} पर मूल फोटो देखें`}
             >
               {media.credit.title}
             </a>

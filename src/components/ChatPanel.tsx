@@ -60,7 +60,7 @@ export default function ChatPanel() {
         <button
           className="chat-fab"
           onClick={handleOpen}
-          title="सबसे बात करें"
+          data-tip="सबसे बात करें"
           aria-label="चैट खोलें"
         >
           <ChatIcon />
@@ -75,7 +75,7 @@ export default function ChatPanel() {
             <button
               className="chat-close"
               onClick={() => setIsOpen(false)}
-              title="चैट बंद करें"
+              data-tip="चैट बंद करें"
               aria-label="चैट बंद करें"
             >
               ✕
@@ -114,7 +114,7 @@ export default function ChatPanel() {
               <button
               className="chat-name-btn"
               onClick={() => setEditingName(true)}
-              title="अपना नाम बदलें"
+              data-tip="अपना नाम बदलें"
             >
                 आप: <b>{nickname}</b> (बदलें)
               </button>
@@ -135,7 +135,7 @@ export default function ChatPanel() {
               className="chat-send"
               type="submit"
               disabled={!draft.trim() || !canSend}
-              title="संदेश भेजें (Enter)"
+              data-tip="संदेश भेजें (Enter)"
               aria-label="भेजें"
             >
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20l18-8L3 4v6l12 2-12 2z" /></svg>

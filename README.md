@@ -43,6 +43,14 @@ someone new joins, and can chat with whoever else is around.
   scrub ±5s, shift + ← / → (or `p` / `n`, as on YouTube) change track, ↑ / ↓
   set the volume, `m` mutes, `s` shuffles, `v` opens the video view. Every
   control's tooltip names its shortcut. Ignored while typing in chat.
+- **Tooltips** — one shared bubble for the whole page
+  (`src/components/Tooltips.tsx`), driven by a `data-tip` attribute on any
+  control. This replaces the browser's own `title` tooltips, which only
+  appear after about a second of holding the pointer perfectly still, are
+  styled by the OS rather than the site, and never show for keyboard users
+  — in practice nobody saw them. Being one fixed-position element, it also
+  escapes the playlist panel's `overflow: auto`, and flips below the
+  control when there's no room above (the topbar).
 - **Shared "sync"** — which song is "current" is computed from wall-clock
   time against a fixed schedule (`src/lib/playlist.ts`), so every visitor's
   browser lands on the same track independently, with no server needed for
@@ -80,6 +88,9 @@ someone new joins, and can chat with whoever else is around.
 - **Reactions** — a 🪔 button next to the transport controls broadcasts a
   floating diya to everyone currently on the site via Supabase Realtime
   Broadcast (`src/hooks/usePresence.ts`, `src/components/ReactionBursts.tsx`).
+  Each one rises out of the diya button itself and is drawn above the
+  player card, not behind it — remote reactions carry only a horizontal
+  jitter, since the sender's screen layout says nothing about ours.
   Ephemeral — nothing is stored, it's just a shared "someone's here" ping.
 - **The playlist panel** — opens stacked directly above the player rather
   than in a corner of the screen (both live in one bottom-centred `.dock`,

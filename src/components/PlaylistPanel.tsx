@@ -35,7 +35,7 @@ export default function PlaylistPanel({
         <button
           className="chat-close"
           onClick={onClose}
-          title="सूची बंद करें"
+          data-tip="सूची बंद करें"
           aria-label="सूची बंद करें"
         >
           ✕
@@ -54,7 +54,7 @@ export default function PlaylistPanel({
               <button
                 className="playlist-item-select"
                 onClick={() => onSelect(index)}
-                title={`${track.dev} चलाएं`}
+                data-tip={`${track.dev} चलाएं`}
               >
                 <span className="playlist-item-num">
                   {index === currentIndex ? <PlayingIcon /> : index + 1}
@@ -74,7 +74,7 @@ export default function PlaylistPanel({
                   className={`playlist-item-request${voted ? " voted" : ""}`}
                   onClick={() => requestSong(track.videoId)}
                   disabled={voted}
-                  title={voted ? "आपने अनुरोध कर दिया" : "यह गीत अनुरोध करें"}
+                  data-tip={voted ? "आपने अनुरोध कर दिया" : "यह गीत अनुरोध करें"}
                   aria-label={voted ? "आपने अनुरोध कर दिया" : "यह गीत अनुरोध करें"}
                 >
                   <RequestIcon />
