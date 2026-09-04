@@ -56,6 +56,8 @@ export default function PahadiAdda() {
   // moves in the tree, so the iframe is never torn down and playback runs
   // straight through the switch.
   const [watching, setWatching] = useState(false);
+  // The start click is held here when it lands before the player exists.
+  const [pendingStart, setPendingStart] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   // Real (player-reported) durations, once known, in place of the shipped
   // estimates — kept in state so the render below can read it safely, and
@@ -72,6 +74,9 @@ export default function PahadiAdda() {
   const orderRef = useRef<number[]>(PLAYLIST.map((_, i) => i));
   const shuffleRef = useRef(false);
   const startedRef = useRef(false);
+  // "The listener has asked for sound" — kept separately from `started`
+  // because the ask can arrive before there's a player to act on it.
+  const wantsSoundRef = useRef(false);
   const diyaRef = useRef<HTMLButtonElement>(null);
   // Volume/mute are mirrored into refs so a held-down arrow key compounds
   // properly: key repeat fires many times per frame, far faster than state
@@ -106,10 +111,28 @@ export default function PahadiAdda() {
     return order[(pos + step + order.length) % order.length];
   }, []);
 
+  /**
+   * Turns the sound on. Browsers only allow autoplay while muted, so the
+   * player starts muted and this is what unmutes it — always off the back
+   * of a real click (or from onReady, replaying one).
+   */
+  const turnSoundOn = useCallback((player: YouTubePlayer) => {
+    player.unMute();
+    player.setVolume(volumeRef.current);
+    player.playVideo();
+    startedRef.current = true;
+    wantsSoundRef.current = true;
+    setPendingStart(false);
+    setStarted(true);
+  }, []);
+
   const handleReady = useCallback((event: { target: YouTubePlayer }) => {
     playerRef.current = event.target;
     event.target.seekTo(initial.offset, true);
-  }, [initial.offset]);
+    // Someone who pressed play while the iframe was still loading is
+    // waiting on this — see handleStart.
+    if (wantsSoundRef.current) turnSoundOn(event.target);
+  }, [initial.offset, turnSoundOn]);
 
   const handleStateChange = useCallback((event: { data: number; target: YouTubePlayer }) => {
     setIsPlaying(event.data === 1);
@@ -252,6 +275,27 @@ export default function PahadiAdda() {
   // order everyone else is hearing, so it's remembered per browser rather
   // than shared. The song playing right now always stays put at the front
   // of the new order — turning shuffle on mid-song shouldn't cut it off.
+  // An unMute() that arrives while the player is still buffering is
+  // sometimes dropped on the floor, which lands in the same silent-but-
+  // playing state. Confirm it took, and ask again for a couple of seconds
+  // if it didn't. Short-lived, so it can't argue with someone who mutes
+  // deliberately a moment later.
+  useEffect(() => {
+    if (!started) return;
+    let tries = 0;
+    const id = setInterval(() => {
+      const player = playerRef.current;
+      tries += 1;
+      if (!player || tries > 6 || !wantsSoundRef.current || !player.isMuted?.()) {
+        clearInterval(id);
+        return;
+      }
+      player.unMute();
+      player.setVolume(volumeRef.current);
+    }, 400);
+    return () => clearInterval(id);
+  }, [started]);
+
   const handleToggleShuffle = useCallback(() => {
     const next = !shuffleRef.current;
     shuffleRef.current = next;
@@ -294,13 +338,23 @@ export default function PahadiAdda() {
     [elapsed, trackDuration],
   );
 
+  // The bug this guards against: `playerRef` is only set in onReady, and
+  // on a cold or slow load the start click easily lands before that. The
+  // old version optional-chained all three player calls into nothing but
+  // hid the overlay anyway — leaving a player that was still on its muted
+  // autoplay. The progress bar moved, the pause button said "playing", and
+  // there was no sound and no way back except a reload. So the ask is
+  // remembered instead, the overlay stays up saying it's connecting, and
+  // onReady finishes the job the moment there's a player to finish it on.
   const handleStart = useCallback(() => {
-    playerRef.current?.unMute();
-    playerRef.current?.setVolume(volume);
-    playerRef.current?.playVideo();
-    startedRef.current = true;
-    setStarted(true);
-  }, [volume]);
+    wantsSoundRef.current = true;
+    const player = playerRef.current;
+    if (!player) {
+      setPendingStart(true);
+      return;
+    }
+    turnSoundOn(player);
+  }, [turnSoundOn]);
 
   function handleSelectTrack(index: number) {
     goToTrack(index, 0);
@@ -316,6 +370,7 @@ export default function PahadiAdda() {
     if (v > 0 && muted) {
       playerRef.current?.unMute();
       mutedRef.current = false;
+      wantsSoundRef.current = true;
       setMuted(false);
     }
   }
@@ -333,10 +388,12 @@ export default function PahadiAdda() {
     if (next > 0 && mutedRef.current) {
       player.unMute();
       mutedRef.current = false;
+      wantsSoundRef.current = true;
       setMuted(false);
     } else if (next === 0 && !mutedRef.current) {
       player.mute();
       mutedRef.current = true;
+      wantsSoundRef.current = false;
       setMuted(true);
     }
   }, []);
@@ -346,10 +403,12 @@ export default function PahadiAdda() {
     if (mutedRef.current) {
       playerRef.current.unMute();
       mutedRef.current = false;
+      wantsSoundRef.current = true;
       setMuted(false);
     } else {
       playerRef.current.mute();
       mutedRef.current = true;
+      wantsSoundRef.current = false;
       setMuted(true);
     }
   }, []);
@@ -698,9 +757,10 @@ export default function PahadiAdda() {
             <button
               className="start-overlay"
               onClick={handleStart}
+              disabled={pendingStart}
               data-tip="चलाना शुरू करें (Space)"
             >
-              🔊 सुनना शुरू करें
+              {pendingStart ? "जुड़ रहे हैं…" : "🔊 सुनना शुरू करें"}
             </button>
           )}
         </div>

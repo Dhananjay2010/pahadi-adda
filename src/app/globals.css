@@ -792,6 +792,18 @@ body {
 .start-overlay:hover {
   background: rgba(10, 6, 5, 0.94);
 }
+/* Waiting on the player to load before the sound can be switched on. */
+.start-overlay:disabled {
+  cursor: progress;
+  color: var(--text-dim);
+  background: rgba(10, 6, 5, 0.86);
+  animation: start-waiting 1.4s ease-in-out infinite;
+}
+@keyframes start-waiting {
+  50% {
+    color: var(--text-warm);
+  }
+}
 
 /* ---------- join toasts ---------- */
 .toast-stack {
@@ -1335,38 +1347,6 @@ body {
   flex: none;
   font-variant-numeric: tabular-nums;
   color: rgba(237, 169, 58, 0.7);
-}
-.playlist-item-request {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--text-dim);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-.playlist-item-request:hover {
-  background: rgba(237, 169, 58, 0.16);
-  border-color: rgba(237, 169, 58, 0.4);
-}
-.playlist-item-request.voted {
-  background: rgba(237, 169, 58, 0.22);
-  border-color: rgba(237, 169, 58, 0.55);
-  color: var(--marigold);
-}
-.playlist-item-request svg {
-  width: 12px;
-  height: 12px;
 }
 
 /* ---------- tooltips ---------- */

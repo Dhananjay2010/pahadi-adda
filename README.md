@@ -68,6 +68,14 @@ someone new joins, and can chat with whoever else is around.
   starfield (from `src/lib/timePalette.ts`, interpolated continuously via
   `src/hooks/useTimeOfDay.ts`) tie the differently-lit photos into one
   believable day, and a fixed vignette keeps the topbar/card text legible.
+- **Starting playback** — browsers only allow autoplay while muted, so the
+  player begins muted and the "सुनना शुरू करें" click is what turns the
+  sound on. That click can land before the YouTube iframe is ready, so the
+  ask is recorded and replayed from `onReady` (the overlay stays up saying
+  it's connecting rather than disappearing on a click that did nothing),
+  and the unmute is confirmed for a couple of seconds afterwards in case
+  the player dropped it mid-buffer. Both paths used to end in a player that
+  looked like it was playing with no sound coming out.
 - **Live presence + join toasts** — powered by Supabase Realtime's
   [Presence](https://supabase.com/docs/guides/realtime/presence) feature
   (`src/hooks/usePresence.ts`). Each browser tab tracks itself in a shared
@@ -97,11 +105,6 @@ someone new joins, and can chat with whoever else is around.
   `src/app/globals.css`), so the list appears where the button that opens
   it is. It also opens scrolled to whatever is playing instead of at the
   top of ~95 rows, and follows along if the track changes while it's open.
-- **Song requests** — an "अनुरोध करें" button next to each track in the
-  playlist panel lets anyone nudge what plays next; counts are tallied over
-  a rolling 6-hour window from the `song_requests` table
-  (`src/hooks/useSongRequests.ts`). Purely informational — it never touches
-  the shared playback schedule.
 - **Share** — the "शेयर करें" button in the top bar uses the Web Share API
   (falling back to copying a link) so visitors can invite others in; the
   live online count is also mirrored into the browser tab's title.
@@ -209,7 +212,6 @@ src/
   hooks/
     usePresence.ts             Supabase Realtime presence (online count, joins, reactions)
     useChat.ts                   Supabase-backed chat (history + realtime)
-    useSongRequests.ts            Supabase-backed "request this song" tally
     useTimeOfDay.ts                local hour, updated once a minute
   lib/
     playlist.ts                 curated song list + shared-schedule math
