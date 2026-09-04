@@ -15,7 +15,8 @@ import PhotoCredits from "./PhotoCredits";
 import Tooltips from "./Tooltips";
 import { usePresence } from "@/hooks/usePresence";
 import { useParallax } from "@/hooks/useParallax";
-import { PLAYLIST, scheduleFromEpoch } from "@/lib/playlist";
+import { PLAYLIST, scheduleFromEpoch, type Track } from "@/lib/playlist";
+import type { YoutubeResult } from "@/app/api/youtube-search/route";
 
 function fmt(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
@@ -50,7 +51,9 @@ export default function PahadiAdda() {
   const [volume, setVolume] = useState(85);
   const [muted, setMuted] = useState(false);
   const [shareNotice, setShareNotice] = useState(false);
-  const [trackToast, setTrackToast] = useState<string | null>(null);
+  const [trackToast, setTrackToast] = useState<{ prefix: string; name: string } | null>(
+    null,
+  );
   const [showHint, setShowHint] = useState(false);
   // Video mode just restyles the card — the <YouTube> element below never
   // moves in the tree, so the iframe is never torn down and playback runs
@@ -58,6 +61,10 @@ export default function PahadiAdda() {
   const [watching, setWatching] = useState(false);
   // The start click is held here when it lands before the player exists.
   const [pendingStart, setPendingStart] = useState(false);
+  // A song found through YouTube search, playing in place of a playlist
+  // track. The playlist index stays where it was, so when this one ends
+  // the room picks up exactly where it left off.
+  const [guest, setGuest] = useState<Track | null>(null);
   const [shuffle, setShuffle] = useState(false);
   // Real (player-reported) durations, once known, in place of the shipped
   // estimates — kept in state so the render below can read it safely, and
@@ -77,6 +84,9 @@ export default function PahadiAdda() {
   // "The listener has asked for sound" — kept separately from `started`
   // because the ask can arrive before there's a player to act on it.
   const wantsSoundRef = useRef(false);
+  const guestRef = useRef<Track | null>(null);
+  // What's actually loaded in the player — a playlist track or a guest.
+  const currentVideoIdRef = useRef(PLAYLIST[initial.index].videoId);
   const diyaRef = useRef<HTMLButtonElement>(null);
   // Volume/mute are mirrored into refs so a held-down arrow key compounds
   // properly: key repeat fires many times per frame, far faster than state
@@ -88,11 +98,14 @@ export default function PahadiAdda() {
     usePresence();
   const parallaxRef = useParallax<HTMLDivElement>();
 
-  const track = PLAYLIST[currentIndex];
+  const track = guest ?? PLAYLIST[currentIndex];
   const trackDuration = durations[track.videoId] ?? track.assumedDuration;
 
   const goToTrack = useCallback((index: number, offsetSeconds: number) => {
     currentIndexRef.current = index;
+    currentVideoIdRef.current = PLAYLIST[index].videoId;
+    guestRef.current = null;
+    setGuest(null);
     setCurrentIndex(index);
     setElapsed(offsetSeconds);
     playerRef.current?.loadVideoById({
@@ -138,7 +151,7 @@ export default function PahadiAdda() {
     setIsPlaying(event.data === 1);
     const d = event.target.getDuration();
     if (d && d > 0) {
-      const videoId = PLAYLIST[currentIndexRef.current].videoId;
+      const videoId = currentVideoIdRef.current;
       durationsRef.current = { ...durationsRef.current, [videoId]: d };
       setDurations(durationsRef.current);
     }
@@ -163,7 +176,21 @@ export default function PahadiAdda() {
     goToTrack(next, 0);
     // Only on auto-advance, not on a manual prev/next/select — if you
     // picked a track yourself you already know it changed.
-    setTrackToast(PLAYLIST[next].dev);
+    setTrackToast({ prefix: "अब बज रहा है:", name: PLAYLIST[next].dev });
+  }, [goToTrack, neighbour]);
+
+  // A video that can't be embedded (its owner switched that off) fails the
+  // moment it loads. For a playlist track that's a silent skip, as before;
+  // for something picked out of the search results it needs saying, or the
+  // click just looks broken.
+  const handlePlayerError = useCallback(() => {
+    const wasGuest = guestRef.current !== null;
+    const next = neighbour(1);
+    goToTrack(next, 0);
+    setTrackToast({
+      prefix: wasGuest ? "यह वीडियो यहाँ नहीं चल सकता — अब:" : "अब बज रहा है:",
+      name: PLAYLIST[next].dev,
+    });
   }, [goToTrack, neighbour]);
 
   useEffect(() => {
@@ -311,6 +338,30 @@ export default function PahadiAdda() {
       localStorage.setItem("pahadi-adda-watching", v ? "0" : "1");
       return !v;
     });
+  }, []);
+
+  /**
+   * Plays something found on YouTube that isn't in the playlist. The
+   * playlist index is deliberately left alone: this is a detour, and when
+   * the video ends (or is skipped) playback rejoins the list at the track
+   * after the one that was playing.
+   */
+  const handlePlayExternal = useCallback((result: YoutubeResult) => {
+    const entry: Track = {
+      id: `yt-${result.videoId}`,
+      videoId: result.videoId,
+      dev: result.title,
+      lat: result.channel || "YouTube",
+      assumedDuration: result.duration ?? 0,
+      views: result.views ?? 0,
+    };
+    guestRef.current = entry;
+    currentVideoIdRef.current = entry.videoId;
+    setGuest(entry);
+    setElapsed(0);
+    playerRef.current?.loadVideoById({ videoId: entry.videoId, startSeconds: 0 });
+    playerRef.current?.playVideo();
+    setPlaylistOpen(false);
   }, []);
 
   const handlePlayPause = useCallback(() => {
@@ -565,9 +616,9 @@ export default function PahadiAdda() {
       </div>
 
       {trackToast && (
-        <div className="track-toast" key={trackToast}>
+        <div className="track-toast" key={`${trackToast.prefix}${trackToast.name}`}>
           <span className="track-toast-dot" />
-          अब बज रहा है: <b>{trackToast}</b>
+          {trackToast.prefix} <b>{trackToast.name}</b>
         </div>
       )}
 
@@ -578,7 +629,9 @@ export default function PahadiAdda() {
         {playlistOpen && (
           <PlaylistPanel
             currentIndex={currentIndex}
+            guestVideoId={guest?.videoId ?? null}
             onSelect={handleSelectTrack}
+            onPlayExternal={handlePlayExternal}
             onClose={() => setPlaylistOpen(false)}
           />
         )}
@@ -603,7 +656,7 @@ export default function PahadiAdda() {
                 onReady={handleReady}
                 onStateChange={handleStateChange}
                 onEnd={handleEnd}
-                onError={handleEnd}
+                onError={handlePlayerError}
               />
               {/* At 96x54 the player's own controls are too small to hit,
                   so in compact mode the thumbnail is one big target that
@@ -620,7 +673,7 @@ export default function PahadiAdda() {
                 </button>
               )}
             </div>
-            <div className="meta" key={currentIndex}>
+            <div className="meta" key={track.videoId}>
               <div className="title-dev">{track.dev}</div>
               <div className="title-lat">{track.lat}</div>
             </div>

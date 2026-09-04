@@ -1258,6 +1258,90 @@ body {
   overflow: hidden;
   animation: panel-in 0.25s ease both;
 }
+.playlist-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 10px 2px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-dim);
+}
+.playlist-search:focus-within {
+  border-color: rgba(237, 169, 58, 0.5);
+  background: rgba(237, 169, 58, 0.08);
+}
+.playlist-search svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.playlist-search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-warm);
+  font: inherit;
+  font-size: 12.5px;
+}
+.playlist-search input::placeholder {
+  color: var(--text-dim);
+}
+/* The browser's own clear button on type=search doesn't match anything
+   else here, and there's a styled one next to it. */
+.playlist-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.playlist-search-clear {
+  flex: none;
+  padding: 0 2px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+}
+.playlist-search-clear:hover {
+  color: var(--marigold);
+}
+
+/* ---------- results from YouTube, when the list has none ---------- */
+.playlist-remote {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.playlist-remote-head {
+  padding: 10px 8px 6px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.playlist-remote-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.playlist-remote-item img,
+.playlist-remote-thumb {
+  flex: none;
+  width: 46px;
+  height: 26px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.1);
+}
+.playlist-remote-item .playlist-item-dev {
+  font-size: 13px;
+}
+
 .playlist-list {
   flex: 1;
   overflow-y: auto;

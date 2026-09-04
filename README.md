@@ -100,6 +100,25 @@ someone new joins, and can chat with whoever else is around.
   player card, not behind it — remote reactions carry only a horizontal
   jitter, since the sender's screen layout says nothing about ours.
   Ephemeral — nothing is stored, it's just a shared "someone's here" ping.
+- **Search** — the playlist panel has a search box that takes either
+  script: "gulabi" and "गुलाबी" both find गुलाबी शरारा, and "negi" and
+  "नेगी" both find the Narendra Singh Negi songs (`src/lib/search.ts`).
+  Every track is written in both scripts, so a plain substring match over
+  the two names covers most of it; when that finds nothing, a second pass
+  compares *consonant skeletons* — Devanagari transliterated roughly to
+  Latin with the vowels dropped — which is what lets a Hindi query reach
+  the artist names, since those are only written in Latin (इंदर → "ndr" →
+  Inder Arya). That pass runs only as a fallback: skeletons are loose
+  enough that mixing them into a search with exact hits would bury them.
+- **Songs that aren't in the list** — when a search matches nothing local,
+  the panel searches YouTube and offers the results to play right there
+  (`src/app/api/youtube-search/route.ts`). That route reads YouTube's
+  public results page rather than the Data API, so there's no key to
+  configure and nothing to set up on a fresh deploy — it also means it can
+  break if YouTube reshapes that page, so every failure is soft and the
+  playlist carries on. Playing one is treated as a detour: the playlist
+  index stays put, and when the video ends (or turns out to have embedding
+  disabled, which some do) playback rejoins the list where it left off.
 - **The playlist panel** — opens stacked directly above the player rather
   than in a corner of the screen (both live in one bottom-centred `.dock`,
   `src/app/globals.css`), so the list appears where the button that opens
