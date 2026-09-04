@@ -9,9 +9,9 @@
  * the artist, the fact that other people are already here) and left the
  * card's controls showing faintly through it like a broken screen.
  *
- * So the ask moved up here, into a panel of its own, and now carries the
- * pitch: what this place is, who's in it right now, and what is about to
- * play. The card below stays fully visible and simply isn't live yet.
+ * So the ask moved up here, into a panel of its own, alongside who's in the
+ * room right now and what is about to play. The card below stays fully
+ * visible and simply isn't live yet.
  */
 export default function StartPanel({
   onlineCount,
@@ -29,9 +29,6 @@ export default function StartPanel({
       <div className="start-panel-glow" aria-hidden="true" />
       <div className="start-panel-body">
         <h2 className="start-panel-title">पहाड़ी अड्डे में आपका स्वागत है</h2>
-        <p className="start-panel-line">
-          यहाँ सब एक साथ, एक ही गीत सुनते हैं — जैसे गाँव के चौक पर बजता रेडियो।
-        </p>
         <button
           className="start-panel-cta"
           onClick={onStart}
