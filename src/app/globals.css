@@ -9,10 +9,40 @@
   --text-dim: #cdbca1;
   --accent: #eda93a;
   --accent-ink: #2a1a0c;
+  /* A lighter marigold than --accent: the focus ring has to read against
+     the card's own marigold border as well as against the night sky. */
+  --focus-ring: #ffd484;
+  --hairline: rgba(255, 255, 255, 0.1);
+  --surface-soft: rgba(255, 255, 255, 0.06);
+  --surface-soft-hover: rgba(255, 255, 255, 0.11);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Every control on this page sits on a dark, translucent, blurred surface,
+   and the browser's own focus ring — a hairline in the accent colour — is
+   effectively invisible against it. Tabbing through the player was
+   therefore a walk in the dark, which is a strange thing for a site whose
+   controls all advertise keyboard shortcuts. One explicit ring, drawn
+   outside the control so it never fights the button's own border. */
+:where(a, button, input, [tabindex], [role="slider"]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Announced, never drawn. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 html,
@@ -418,9 +448,9 @@ body {
   height: 14px;
   flex: none;
 }
-.credits-btn {
-  width: 32px;
-  height: 32px;
+.icon-btn {
+  width: 34px;
+  height: 34px;
   padding: 0;
   border-radius: 999px;
   display: flex;
@@ -436,10 +466,19 @@ body {
     border-color 0.15s ease,
     transform 0.15s ease;
 }
-.credits-btn:hover {
+.icon-btn:hover {
   background: rgba(237, 169, 58, 0.16);
   border-color: rgba(237, 169, 58, 0.5);
   transform: translateY(-1px);
+}
+.icon-btn[aria-pressed="true"] {
+  background: rgba(237, 169, 58, 0.22);
+  border-color: rgba(237, 169, 58, 0.55);
+  color: var(--marigold);
+}
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 .credits-btn svg {
   width: 15px;
@@ -513,15 +552,23 @@ body {
   bottom: var(--dock-bottom);
   transform: translateX(-50%);
   z-index: 6;
-  width: min(92vw, 430px);
+  width: min(92vw, 470px);
   max-height: calc(100dvh - var(--dock-bottom) - 24px);
   display: flex;
   flex-direction: column;
   gap: 10px;
   transition: width 0.28s cubic-bezier(0.22, 0.9, 0.28, 1);
 }
-.dock.watching {
-  width: min(94vw, 620px);
+/* The dock widens for whatever it is currently holding. A 95-song list read
+   through a 430px-wide, 420px-tall slot was six rows at a time on a 1440px
+   screen — a peephole onto the thing this site is actually made of, with a
+   thousand pixels of unused desktop either side of it. */
+.dock.listing {
+  width: min(94vw, 560px);
+}
+.dock.watching,
+.dock.watching.listing {
+  width: min(94vw, 660px);
 }
 .card {
   position: relative;
@@ -529,31 +576,44 @@ body {
   width: 100%;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 16px;
-  padding: 12px 14px;
+  border-radius: 18px;
+  padding: 13px 15px 11px;
   backdrop-filter: blur(14px) saturate(1.1);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
 }
 .card-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 13px;
 }
 .art {
   position: relative;
-  width: 96px;
-  height: 54px;
+  width: 112px;
+  height: 63px;
   border-radius: 10px;
   flex: none;
   overflow: hidden;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   background: #000;
 }
+/* The iframe is created at its 96x54 attribute size; without this it sits
+   letterboxed inside the (now larger) thumbnail on a black surround.
+   react-youtube wraps the iframe in a bare <div>, so that wrapper has to be
+   stretched too — otherwise `height: 100%` on the iframe resolves against a
+   height-auto parent, gives up, and falls back to the 150px default height
+   of a replaced element. */
+.art > div {
+  width: 100%;
+  height: 100%;
+}
 .art iframe {
   display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 /* Compact mode only: covers the thumbnail so a tap opens the video view
    rather than landing on the player's own unusably small controls. Stays
@@ -604,6 +664,32 @@ body {
   max-height: max(140px, min(52dvh, calc(100dvh - 250px)));
   border-radius: 12px;
 }
+/* Video and song list both want the one bottom-centred column, and the
+   card can't shrink, so with both open the list was squeezed down to about
+   twenty pixels — a scrollbar with a sliver of a song in it. The video
+   gives way instead: it is still perfectly watchable at this size, and the
+   list is the thing that was just asked for. The 100dvh term is what keeps
+   this honest on a short window; the 110px floor keeps the video from
+   disappearing on a very short one. */
+/* With both open the card falls back to the same shape it has in compact
+   mode — video on the left, song on the right — just with a much bigger
+   video. Sized in both directions from one height so it stays exactly
+   16:9 rather than growing black bars down its sides, and small enough to
+   leave the list a usable number of rows: everything below the video costs
+   the card about 250px, and the rest of the column is the list's. */
+.dock.watching.listing .card-row {
+  flex-wrap: nowrap;
+}
+.dock.watching.listing .art {
+  --stage-height: max(110px, min(26dvh, calc(100dvh - 560px)));
+  order: -1;
+  flex: 0 0 auto;
+  width: calc(var(--stage-height) * 16 / 9);
+  height: var(--stage-height);
+  max-height: none;
+  aspect-ratio: auto;
+}
+
 /* Absolute, not `height: 100%` — the container's height comes from
    aspect-ratio/max-height, which a percentage height can't resolve
    against, and the iframe would sit at its 96x54 attribute ratio. */
@@ -613,11 +699,6 @@ body {
   width: 100%;
   height: 100%;
 }
-.openyt.on {
-  background: rgba(237, 169, 58, 0.22);
-  border-color: rgba(237, 169, 58, 0.55);
-  color: var(--marigold);
-}
 .meta {
   min-width: 0;
   flex: 1;
@@ -625,55 +706,180 @@ body {
 .title-dev {
   font-family: var(--font-devanagari-display), serif;
   font-weight: 400;
-  font-size: 16.5px;
-  line-height: 1.25;
+  font-size: 19px;
+  line-height: 1.3;
   color: var(--text-warm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Two lines, because the Latin line carries the artist and "Cream Paudara
+   — Rakesh Khanwal & Maya Upadhyay" does not fit on one at any card width
+   this thing will ever have. It used to be cut at the artist's first name. */
 .title-lat {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* ---------- card footer: what's next, and the secondary actions ---------- */
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 3px;
+  padding-top: 9px;
+  border-top: 1px solid var(--hairline);
+}
+.upnext {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
   font-size: 11.5px;
   color: var(--text-dim);
+}
+.upnext-label {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(237, 169, 58, 0.75);
+}
+.upnext-name {
+  font-family: var(--font-devanagari-display), serif;
+  font-size: 13px;
+  color: var(--text-warm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 1px;
+  /* Shrinks a hundred times more slowly than the artist beside it: the song
+     name is what someone is scanning for, and equal shrink factors clipped
+     it to "सपना …" while the artist kept its full width. */
+  flex: 0 1 auto;
 }
-.openyt {
-  flex: none;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 9px;
+.upnext-lat {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 100 auto;
+}
+.card-foot-actions {
   display: flex;
   align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.foot-btn {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
+  gap: 6px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  border-radius: 9px;
+  background: var(--surface-soft);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-warm);
   text-decoration: none;
   cursor: pointer;
   font: inherit;
+  font-size: 12px;
+  font-weight: 700;
   transition:
     background 0.15s ease,
     border-color 0.15s ease;
 }
-.openyt:hover {
+/* The list is the doorway to 95 songs and used to be one of three
+   near-identical 32px glyphs in a row. It gets a word. */
+.foot-btn-wide {
+  padding: 0 12px 0 10px;
+}
+.foot-btn:hover {
   background: rgba(237, 169, 58, 0.2);
   border-color: rgba(237, 169, 58, 0.55);
 }
-.openyt svg {
-  width: 14px;
-  height: 14px;
+.foot-btn.on {
+  background: rgba(237, 169, 58, 0.22);
+  border-color: rgba(237, 169, 58, 0.55);
+  color: var(--marigold);
+}
+.foot-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
 }
 
+/* ---------- back to the shared schedule ---------- */
+/* Shown only once this listener has skipped or scrubbed. Until now the site
+   promised "everyone is hearing the same song", quietly stopped being true
+   the first time you pressed next, and offered no way back short of a
+   reload. */
+.rejoin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(237, 169, 58, 0.12);
+  border: 1px solid rgba(237, 169, 58, 0.34);
+  color: var(--text-warm);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  animation: toast-in 0.3s ease both;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.rejoin:hover {
+  background: rgba(237, 169, 58, 0.2);
+  border-color: rgba(237, 169, 58, 0.55);
+}
+.rejoin svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--marigold);
+}
+
+/* The visible track stays thin; the *hit area* is 20px tall and spans the
+   card, because 4px is not something anyone hits with a thumb, and the old
+   bar was 4px of both. `touch-action: none` is what lets a finger drag it
+   instead of the gesture being read as a page scroll. */
 .seek {
   position: relative;
-  height: 4px;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  height: 20px;
+  margin: -4px 0 -6px;
   cursor: pointer;
+  touch-action: none;
+  border-radius: 6px;
+}
+.seek-track {
+  position: relative;
+  width: 100%;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: height 0.13s ease;
+}
+.seek:hover .seek-track,
+.seek:focus-visible .seek-track,
+.seek.dragging .seek-track {
+  height: 7px;
 }
 .seek-fill {
   position: absolute;
@@ -683,33 +889,82 @@ body {
   border-radius: 99px;
   background: linear-gradient(90deg, var(--marigold), #f4c874);
 }
+.seek-thumb {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border-radius: 50%;
+  background: #fff6e6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
+  pointer-events: none;
+}
+.seek:hover .seek-thumb,
+.seek:focus-visible .seek-thumb,
+.seek.dragging .seek-thumb {
+  opacity: 1;
+  transform: scale(1);
+}
+/* "Where would this land?" is the only question a click on a progress bar
+   ever asks, so answer it before the click. */
+.seek-preview {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 7px;
+  transform: translateX(-50%);
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(18, 12, 10, 0.96);
+  border: 1px solid rgba(237, 169, 58, 0.35);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-warm);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.seek.is-disabled {
+  cursor: default;
+  opacity: 0.6;
+}
 .times {
   display: flex;
   justify-content: space-between;
   font-size: 10.5px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
-  margin-top: -2px;
 }
+/* Three flex children totalling 400px in a 402px box: the volume cluster
+   dropped onto a line of its own at the default card width, which read as
+   a broken control bar rather than a two-row design. A grid can't wrap, and
+   1fr / auto / 1fr keeps the transport optically centred however wide the
+   side clusters get. */
 .controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
 }
 .controls-transport {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  flex: 1;
+  gap: 10px;
 }
 .controls-side {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: none;
+  gap: 4px;
+  min-width: 0;
+}
+.controls-volume {
+  justify-content: flex-end;
 }
 .reaction-btn,
 .mute-btn,
@@ -725,11 +980,54 @@ body {
 .shuffle-btn.on:hover {
   background: rgba(237, 169, 58, 0.3);
 }
+/* Styled by hand rather than left to `accent-color`, so it matches the
+   progress bar right above it instead of being the one piece of raw OS
+   chrome in the card. --filled is set inline from the current volume. */
 .volume-slider {
-  width: 56px;
-  height: 3px;
-  accent-color: var(--marigold);
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 0 1 64px;
+  min-width: 34px;
+  height: 16px;
+  background: none;
   cursor: pointer;
+}
+.volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 99px;
+  background: linear-gradient(
+    90deg,
+    var(--marigold) var(--filled, 0%),
+    rgba(255, 255, 255, 0.18) var(--filled, 0%)
+  );
+}
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: #fff6e6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.volume-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.volume-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--marigold);
+}
+.volume-slider::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: none;
+  border-radius: 50%;
+  background: #fff6e6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 .ctrl-btn {
   background: none;
@@ -774,35 +1072,176 @@ body {
   height: 17px;
 }
 
-.start-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  border: none;
-  cursor: pointer;
-  background: rgba(10, 6, 5, 0.86);
-  color: var(--text-warm);
-  font-family: var(--font-manrope), sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ---------- the welcome / start-sound panel ---------- */
+/* Some click is unavoidable — browsers only autoplay muted — so this is the
+   screen every single visitor sees first. It used to be a near-opaque slab
+   dropped over the player, which hid the song, the artist and the live
+   headcount (the three things that would make anyone want to press it) and
+   left the card's controls showing faintly through it like a fault. It is
+   now a panel of its own above the card, and it does the introducing that
+   an eight-second hint bubble in the corner used to attempt. */
+.start-panel {
+  position: relative;
+  flex: none;
+  width: 100%;
+  overflow: hidden;
+  background: var(--card-bg);
+  border: 1px solid rgba(237, 169, 58, 0.42);
+  border-radius: 18px;
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  animation: panel-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-.start-overlay:hover {
-  background: rgba(10, 6, 5, 0.94);
+.start-panel-glow {
+  position: absolute;
+  inset: -60% -20% auto;
+  height: 200%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 30%, rgba(237, 169, 58, 0.22) 0%, transparent 62%);
+}
+.start-panel-body {
+  position: relative;
+  padding: 17px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 7px;
+}
+.start-panel-title {
+  margin: 0;
+  font-family: var(--font-devanagari-display), serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.3;
+  color: var(--text-warm);
+}
+.start-panel-line {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.start-panel-cta {
+  margin-top: 5px;
+  padding: 11px 28px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f7ce78, var(--accent));
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 800;
+  font-size: 14.5px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(237, 169, 58, 0.28);
+  animation: cta-breathe 2.6s ease-in-out infinite;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.start-panel-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(237, 169, 58, 0.38);
+}
+@keyframes cta-breathe {
+  0%,
+  100% {
+    box-shadow: 0 8px 22px rgba(237, 169, 58, 0.28);
+  }
+  50% {
+    box-shadow: 0 8px 30px rgba(237, 169, 58, 0.5);
+  }
 }
 /* Waiting on the player to load before the sound can be switched on. */
-.start-overlay:disabled {
+.start-panel-cta:disabled {
   cursor: progress;
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text-dim);
-  background: rgba(10, 6, 5, 0.86);
+  box-shadow: none;
   animation: start-waiting 1.4s ease-in-out infinite;
 }
 @keyframes start-waiting {
   50% {
     color: var(--text-warm);
   }
+}
+.start-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 4px;
+  max-width: 100%;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.start-panel-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.start-panel-live b {
+  color: var(--text-warm);
+  font-variant-numeric: tabular-nums;
+}
+.start-panel-track {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.start-panel-track b {
+  font-family: var(--font-devanagari-display), serif;
+  font-weight: 400;
+  color: var(--marigold);
+}
+
+/* The card below stays readable — it is the reason to press the button —
+   but nothing in it is live yet, and a click anywhere on it starts the
+   sound too. Blocking the controls is deliberate: a "next" pressed before
+   the unmute lands changes the song silently, which is the exact failure
+   the whole start sequence exists to avoid. */
+.start-scrim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(8, 5, 4, 0.42);
+}
+.start-scrim:disabled {
+  cursor: progress;
+}
+.dock.waiting .card {
+  border-color: rgba(237, 169, 58, 0.18);
+}
+/* Someone who left video mode on last visit gets it back — but not yet.
+   A 16:9 stage stacked under the welcome panel is taller than a phone has
+   room for, and the pair pushed up over the site's own title. Until the
+   sound is on, the card stays compact; the video view returns on the same
+   click that starts playback. */
+.dock.waiting.watching {
+  width: min(92vw, 470px);
+}
+.dock.waiting.watching .card-row {
+  flex-wrap: nowrap;
+}
+.dock.waiting.watching .art {
+  order: 0;
+  flex: none;
+  width: 112px;
+  height: 63px;
+  aspect-ratio: auto;
+  max-height: none;
+  border-radius: 10px;
+}
+.dock.waiting.watching .art iframe {
+  position: static;
 }
 
 /* ---------- join toasts ---------- */
@@ -849,34 +1288,6 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* ---------- hint bubble ---------- */
-.hint-bubble {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  max-width: 270px;
-  padding: 9px 10px 9px 13px;
-  border-radius: 12px;
-  background: rgba(16, 10, 8, 0.72);
-  border: 1px solid rgba(237, 169, 58, 0.4);
-  backdrop-filter: blur(8px);
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--text-warm);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  animation: toast-in 0.3s ease;
-}
-.hint-bubble button {
-  flex: none;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 2px;
 }
 
 .track-toast {
@@ -1054,6 +1465,12 @@ body {
 }
 
 /* ---------- chat ---------- */
+/* Bottom-right, clear of the dock — but only while there is room beside a
+   dock that can be 660px wide in video mode. Below about 900px the two
+   overlap and the chat button lands on the player's own controls, so it
+   moves up under the topbar (see the media query at the end of this file).
+   That used to happen only below 480px, which left every tablet and every
+   half-width desktop window with a chat button sitting on the card. */
 .chat-fab {
   position: absolute;
   right: 24px;
@@ -1097,24 +1514,6 @@ body {
   justify-content: center;
 }
 
-.chat-panel {
-  position: absolute;
-  right: 16px;
-  top: 80px;
-  bottom: 26px;
-  z-index: 8;
-  width: min(88vw, 320px);
-  max-height: min(60vh, 460px);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  backdrop-filter: blur(14px) saturate(1.1);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: panel-in 0.25s ease both;
-}
 @keyframes panel-in {
   from {
     opacity: 0;
@@ -1125,24 +1524,66 @@ body {
     transform: translateY(0);
   }
 }
-.chat-header {
+/* ---------- shared panel chrome (chat, playlist, credits, shortcuts) ---------- */
+.side-panel {
+  position: absolute;
+  right: 16px;
+  top: 78px;
+  z-index: 8;
+  width: min(88vw, 330px);
+  max-height: min(64dvh, 480px);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: panel-in 0.25s ease both;
+}
+.panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 10px;
+  padding: 12px 10px 12px 15px;
+  border-bottom: 1px solid var(--hairline);
   font-family: var(--font-devanagari-display), serif;
   font-weight: 400;
   font-size: 15px;
   color: var(--text-warm);
 }
-.chat-close {
+.panel-header-count {
+  margin-left: 9px;
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.panel-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
   background: none;
   border: none;
   color: var(--text-dim);
   cursor: pointer;
   font-size: 14px;
-  padding: 4px;
+  padding: 0;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.panel-close:hover {
+  background: var(--surface-soft-hover);
+  color: var(--text-warm);
 }
 .chat-list {
   flex: 1;
@@ -1243,14 +1684,16 @@ body {
 /* ---------- playlist panel ---------- */
 .playlist-panel {
   /* Shrinks to whatever room is left above the card (the dock is capped
-     to the viewport), so a tall video view can't push it off-screen. */
+     to the viewport), so a tall video view can't push it off-screen. The
+     cap used to be 46dvh/420px, which on a 1440x900 desktop showed six of
+     ninety-five songs at a time — and two of them on a short laptop. */
   flex: 0 1 auto;
   min-height: 0;
-  max-height: min(46dvh, 420px);
+  max-height: min(64dvh, 620px);
   width: 100%;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 16px;
+  border-radius: 18px;
   backdrop-filter: blur(14px) saturate(1.1);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
   display: flex;
@@ -1472,6 +1915,7 @@ body {
 }
 .playlist-item-text {
   min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -1503,6 +1947,65 @@ body {
   flex: none;
   font-variant-numeric: tabular-nums;
   color: rgba(237, 169, 58, 0.7);
+}
+.playlist-item-time {
+  flex: none;
+  padding-left: 8px;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+.playlist-empty {
+  padding: 26px 14px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+/* ---------- keyboard shortcut sheet ---------- */
+.shortcuts-list {
+  margin: 0;
+  padding: 8px 15px 15px;
+  overflow-y: auto;
+}
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.shortcuts-row:last-child {
+  border-bottom: none;
+}
+.shortcuts-row dt {
+  display: flex;
+  flex: none;
+  gap: 5px;
+}
+.shortcuts-row dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: right;
+}
+.shortcuts-row kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom-width: 2px;
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-warm);
+  white-space: nowrap;
 }
 
 /* ---------- tooltips ---------- */
@@ -1537,23 +2040,6 @@ body {
 }
 
 /* ---------- photo credits ---------- */
-.credits-panel {
-  position: absolute;
-  top: 80px;
-  right: 16px;
-  z-index: 9;
-  width: min(84vw, 300px);
-  max-height: min(60vh, 380px);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  backdrop-filter: blur(14px) saturate(1.1);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: panel-in 0.2s ease both;
-}
 .credits-list {
   overflow-y: auto;
   padding: 6px 14px 14px;
@@ -1582,9 +2068,11 @@ body {
   .card,
   .meta,
   .play-btn.is-playing,
-  .chat-panel,
+  .side-panel,
   .playlist-panel,
-  .credits-panel,
+  .start-panel,
+  .start-panel-cta,
+  .rejoin,
   .sparkle-mote,
   .playlist-search-mic.on,
   .tooltip,
@@ -1608,8 +2096,80 @@ body {
   .hero-stars,
   .hero-color-wash,
   .photo-layer,
+  .seek-track,
+  .seek-thumb,
   .dock {
     transition: none;
+  }
+  /* The thumb still has to be visible when it's being used, it just can't
+     grow into place. */
+  .seek:hover .seek-thumb,
+  .seek:focus-visible .seek-thumb,
+  .seek.dragging .seek-thumb {
+    transform: scale(1);
+  }
+}
+
+/* Anything driven by a finger rather than a cursor: the transport buttons
+   were 28-34px, which is under every platform's minimum and exactly the
+   size that makes people miss "next" and hit "forward 5s". Keyed off the
+   pointer rather than the width so it also covers tablets, where there is
+   plenty of room and still no mouse. */
+@media (pointer: coarse) {
+  .ctrl-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .ctrl-btn svg {
+    width: 19px;
+    height: 19px;
+  }
+  .seek-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .seek-btn svg {
+    width: 23px;
+    height: 23px;
+  }
+  .play-btn {
+    width: 54px;
+    height: 54px;
+  }
+  .play-btn svg {
+    width: 21px;
+    height: 21px;
+  }
+  .reaction-btn,
+  .mute-btn,
+  .shuffle-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  .foot-btn {
+    height: 40px;
+    min-width: 40px;
+  }
+  .panel-close {
+    width: 38px;
+    height: 38px;
+  }
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .playlist-item-select {
+    padding: 3px 0;
+  }
+  /* The seek bar is dragged with a thumb here, so its handle is always
+     out — there is no hover to reveal it with. */
+  .seek-thumb {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .seek-track {
+    height: 6px;
   }
 }
 
@@ -1628,8 +2188,39 @@ body {
     --dock-bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 14px);
   }
   .dock,
-  .dock.watching {
+  .dock.listing,
+  .dock.watching,
+  .dock.watching.listing {
     width: 92vw;
+  }
+  /* One card width on a phone means the title has the whole row: the art
+     shrinks a little, and the volume slider goes entirely — the hardware
+     buttons on the side of the phone already do that job, and the 64px it
+     was taking is worth more as room for a 44px mute target. */
+  .art {
+    width: 92px;
+    height: 52px;
+  }
+  .title-dev {
+    font-size: 17.5px;
+  }
+  .volume-slider {
+    display: none;
+  }
+  .controls {
+    gap: 4px;
+  }
+  .controls-transport {
+    gap: 4px;
+  }
+  .card-foot {
+    gap: 8px;
+  }
+  .upnext-lat {
+    display: none;
+  }
+  .playlist-panel {
+    max-height: min(58dvh, 460px);
   }
   .plaque-sub {
     margin-top: 5px;
@@ -1649,28 +2240,30 @@ body {
   .toast {
     justify-content: center;
   }
-  .chat-panel,
-  .credits-panel {
+  .side-panel {
     right: 10px;
     left: 10px;
     width: auto;
+    max-height: min(62dvh, 460px);
   }
 
-  /* The chat button used to sit bottom-right, right on top of the player
-     card's corner and its controls. Move it up under the YouTube link so
-     the bottom edge is left to the card alone. */
+  .side-panel {
+    top: calc(max(22px, env(safe-area-inset-top, 0px)) + 88px);
+  }
+}
+
+/* The chat button moves up under the topbar wherever the dock is wide
+   enough to reach it — the bottom edge is then the card's alone. */
+@media (max-width: 900px) {
   .chat-fab {
-    top: calc(max(22px, env(safe-area-inset-top, 0px)) + 42px);
+    top: calc(max(22px, env(safe-area-inset-top, 0px)) + 44px);
     right: max(24px, env(safe-area-inset-right, 0px));
     bottom: auto;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
   }
   .chat-fab svg {
-    width: 17px;
-    height: 17px;
-  }
-  .chat-panel {
-    top: calc(max(22px, env(safe-area-inset-top, 0px)) + 88px);
+    width: 18px;
+    height: 18px;
   }
 }

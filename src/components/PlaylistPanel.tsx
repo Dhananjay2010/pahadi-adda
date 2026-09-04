@@ -23,6 +23,7 @@ type RemoteState = {
 export default function PlaylistPanel({
   currentIndex,
   guestVideoId,
+  autoFocusSearch = false,
   onSelect,
   onPlayExternal,
   onClose,
@@ -30,6 +31,8 @@ export default function PlaylistPanel({
   currentIndex: number;
   /** Set while something found on YouTube is playing instead of a track. */
   guestVideoId: string | null;
+  /** Opened by the "/" shortcut — put the caret in the box. Never on a tap. */
+  autoFocusSearch?: boolean;
   onSelect: (index: number) => void;
   onPlayExternal: (result: YoutubeResult) => void;
   onClose: () => void;
@@ -51,11 +54,19 @@ export default function PlaylistPanel({
   const [remote, setRemote] = useState<RemoteState>({ query: "", status: "idle", items: [] });
   const activeRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
   const opened = useRef(false);
 
   const results = useMemo(() => searchPlaylist(query), [query]);
   const searching = query.trim().length >= 2;
   const nothingLocally = searching && results.length === 0;
+
+  // Someone who opened this by typing "/" is mid-keystroke; put them in the
+  // box. Someone who tapped the button wants to look at the list, and
+  // focusing the input there would throw a keyboard over half of it.
+  useEffect(() => {
+    if (autoFocusSearch) searchRef.current?.focus();
+  }, [autoFocusSearch]);
 
   // Open on whatever is playing rather than at the top of a 95-song list:
   // jump straight there when the panel opens, then follow along (gently) if
@@ -116,12 +127,20 @@ export default function PlaylistPanel({
 
   return (
     <div className="playlist-panel">
-      <div className="chat-header">
-        <span>पूरी सूची</span>
+      <div className="panel-header">
+        <span>
+          पूरी सूची
+          {/* A count, because "95 songs" and "the 3 that matched" are very
+              different things to be looking at, and the list itself only
+              tells you by how far it scrolls. */}
+          <span className="panel-header-count">
+            {searching ? `${results.length} मिले` : `${PLAYLIST.length} गीत`}
+          </span>
+        </span>
         <button
-          className="chat-close"
+          className="panel-close"
           onClick={onClose}
-          data-tip="सूची बंद करें"
+          data-tip="सूची बंद करें (Esc)"
           aria-label="सूची बंद करें"
         >
           ✕
@@ -131,6 +150,7 @@ export default function PlaylistPanel({
       <div className="playlist-search">
         <SearchIcon />
         <input
+          ref={searchRef}
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -225,23 +245,31 @@ export default function PlaylistPanel({
                 className="playlist-item-select"
                 onClick={() => onSelect(index)}
                 data-tip={`${track.dev} चलाएं`}
+                aria-current={active ? "true" : undefined}
               >
-                <span className="playlist-item-num">
+                <span className="playlist-item-num" aria-hidden="true">
                   {active ? <PlayingIcon /> : index + 1}
                 </span>
                 <span className="playlist-item-text">
                   <span className="playlist-item-dev">{track.dev}</span>
                   <span className="playlist-item-lat">
-                    <span className="playlist-item-name">{track.lat}</span>
+                    <span className="playlist-item-name" lang="en">
+                      {track.lat}
+                    </span>
                     <span className="playlist-item-views">
                       {formatViews(track.views)} व्यू
                     </span>
                   </span>
                 </span>
+                <span className="playlist-item-time">{formatTime(track.assumedDuration)}</span>
               </button>
             </div>
           );
         })}
+
+        {!searching && results.length === 0 && (
+          <div className="playlist-empty">कोई गीत नहीं मिला</div>
+        )}
 
         {nothingLocally && (
           <div className="playlist-remote">

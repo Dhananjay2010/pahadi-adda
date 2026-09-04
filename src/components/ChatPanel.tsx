@@ -12,9 +12,21 @@ function timeLabel(iso: string): string {
   return `${h12}:${m < 10 ? "0" : ""}${m}${ampm}`;
 }
 
-export default function ChatPanel() {
+/**
+ * Open/closed is owned by PahadiAdda rather than by this component, because
+ * this panel shares its corner of the screen with the photo credits and the
+ * shortcut sheet: only one of the three can usefully be up at a time, and
+ * something has to hold that rule. Unread stays local — nothing else needs
+ * to know about it.
+ */
+export default function ChatPanel({
+  isOpen,
+  onOpenChange,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { messages, configured, canSend, sendMessage, error } = useChat();
-  const [isOpen, setIsOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   // Safe to read localStorage in the initializer: ChatPanel only ever
   // renders inside the ssr:false PahadiAdda tree, so there's no server
@@ -34,7 +46,7 @@ export default function ChatPanel() {
   }, [messages, isOpen]);
 
   function handleOpen() {
-    setIsOpen(true);
+    onOpenChange(true);
     setUnread(0);
   }
 
@@ -69,13 +81,13 @@ export default function ChatPanel() {
       )}
 
       {isOpen && (
-        <div className="chat-panel">
-          <div className="chat-header">
+        <div className="side-panel chat-panel" role="dialog" aria-label="अड्डे की बातें">
+          <div className="panel-header">
             <span>अड्डे की बातें</span>
             <button
-              className="chat-close"
-              onClick={() => setIsOpen(false)}
-              data-tip="चैट बंद करें"
+              className="panel-close"
+              onClick={() => onOpenChange(false)}
+              data-tip="चैट बंद करें (Esc)"
               aria-label="चैट बंद करें"
             >
               ✕
