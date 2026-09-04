@@ -28,9 +28,6 @@ function fmt(sec: number): string {
   return `${m}:${r < 10 ? "0" : ""}${r}`;
 }
 
-/** How far you can scrub before you count as having left the room. */
-const DRIFT_SECONDS = 30;
-
 /**
  * A Fisher-Yates shuffle of every playlist index, with `first` pulled to
  * the front so whatever is playing right now keeps playing.
@@ -70,11 +67,6 @@ export default function PahadiAdda() {
   const [trackToast, setTrackToast] = useState<{ prefix: string; name: string } | null>(
     null,
   );
-  // True once this listener has skipped, scrubbed or picked a song and is
-  // therefore no longer on the track a fresh visitor would land on. The
-  // whole promise of the place is "everyone is hearing this together", so
-  // when that stops being true it should say so — and offer the way back.
-  const [drifted, setDrifted] = useState(false);
   // Video mode just restyles the card — the <YouTube> element below never
   // moves in the tree, so the iframe is never torn down and playback runs
   // straight through the switch.
@@ -321,29 +313,12 @@ export default function PahadiAdda() {
   const handlePrev = useCallback(() => {
     goToTrack(neighbour(-1), 0);
     playerRef.current?.playVideo();
-    setDrifted(true);
   }, [goToTrack, neighbour]);
 
   const handleNext = useCallback(() => {
     goToTrack(neighbour(1), 0);
     playerRef.current?.playVideo();
-    setDrifted(true);
   }, [goToTrack, neighbour]);
-
-  /**
-   * Jumps back to whatever a visitor arriving right now would land on —
-   * same fixed schedule, same math, just re-run. Deliberately a button and
-   * not a timer: the periodic version of this is what used to cut songs
-   * short mid-play (see handleEnd), and it can only be right at a moment
-   * someone has actually asked for it.
-   */
-  const handleRejoin = useCallback(() => {
-    const { index, offset } = scheduleFromEpoch(durationsRef.current);
-    goToTrack(index, offset);
-    playerRef.current?.playVideo();
-    setDrifted(false);
-    setTrackToast({ prefix: "अड्डे के साथ:", name: PLAYLIST[index].dev });
-  }, [goToTrack]);
 
   // Shuffling is a personal thing, like skipping: it takes you off the
   // order everyone else is hearing, so it's remembered per browser rather
@@ -412,7 +387,6 @@ export default function PahadiAdda() {
     playerRef.current?.loadVideoById({ videoId: entry.videoId, startSeconds: 0 });
     playerRef.current?.playVideo();
     setPlaylistOpen(false);
-    setDrifted(true);
     // Picking a song is as clear an ask for sound as pressing the start
     // button, and the list is reachable before that button (the "/"
     // shortcut opens it) — without this, the choice would load and play on
@@ -428,22 +402,15 @@ export default function PahadiAdda() {
 
   // One place the position is set from, whether that came from the slider,
   // the ±5s buttons or the arrow keys.
-  //
-  // Only a real jump counts as leaving the shared schedule. Nudging five
-  // seconds either way still leaves you on the song everyone else has on,
-  // at more or less their minute, and popping up "you've drifted from the
-  // room" every time someone taps ⟲5 would be noise about nothing.
   const handleSeekTo = useCallback(
     (seconds: number) => {
       const player = playerRef.current;
       if (!player) return;
-      const from = player.getCurrentTime?.() ?? elapsed;
       const offset = Math.min(trackDuration, Math.max(0, seconds));
       player.seekTo(offset, true);
       setElapsed(offset);
-      if (Math.abs(offset - from) > DRIFT_SECONDS) setDrifted(true);
     },
-    [elapsed, trackDuration],
+    [trackDuration],
   );
 
   const handleSeekBy = useCallback(
@@ -460,7 +427,6 @@ export default function PahadiAdda() {
     goToTrack(index, 0);
     playerRef.current?.playVideo();
     setPlaylistOpen(false);
-    setDrifted(true);
     if (!startedRef.current) handleStart();
   }
 
@@ -833,17 +799,6 @@ export default function PahadiAdda() {
             <span>{fmt(trackDuration)}</span>
           </div>
 
-          {drifted && (
-            <button
-              className="rejoin"
-              onClick={handleRejoin}
-              data-tip="जो गीत सब सुन रहे हैं, वहीं से सुनें"
-            >
-              <RejoinIcon />
-              <span>अड्डे से अलग चल रहे हैं — साथ जुड़ें</span>
-            </button>
-          )}
-
           <div className="controls">
             <div className="controls-side">
               <button
@@ -1031,15 +986,6 @@ function KeyboardIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <rect x="2.2" y="6" width="19.6" height="12" rx="2.4" />
       <path d="M6 9.6h.01M9.2 9.6h.01M12.4 9.6h.01M15.6 9.6h.01M18.4 9.6h.01M6 12.8h.01M9.2 12.8h.01M12.4 12.8h.01M15.6 12.8h.01M18.4 12.8h.01M8 15.6h8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function RejoinIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <path d="M20 11.5a8 8 0 1 1-2.6-5.9" strokeLinecap="round" />
-      <path d="M20.5 3.4v4.4h-4.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

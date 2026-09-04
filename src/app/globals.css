@@ -818,42 +818,6 @@ body {
   flex: none;
 }
 
-/* ---------- back to the shared schedule ---------- */
-/* Shown only once this listener has skipped or scrubbed. Until now the site
-   promised "everyone is hearing the same song", quietly stopped being true
-   the first time you pressed next, and offered no way back short of a
-   reload. */
-.rejoin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(237, 169, 58, 0.12);
-  border: 1px solid rgba(237, 169, 58, 0.34);
-  color: var(--text-warm);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  animation: toast-in 0.3s ease both;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-}
-.rejoin:hover {
-  background: rgba(237, 169, 58, 0.2);
-  border-color: rgba(237, 169, 58, 0.55);
-}
-.rejoin svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  color: var(--marigold);
-}
-
 /* The visible track stays thin; the *hit area* is 20px tall and spans the
    card, because 4px is not something anyone hits with a thumb, and the old
    bar was 4px of both. `touch-action: none` is what lets a finger drag it
@@ -2072,7 +2036,6 @@ body {
   .playlist-panel,
   .start-panel,
   .start-panel-cta,
-  .rejoin,
   .sparkle-mote,
   .playlist-search-mic.on,
   .tooltip,

@@ -103,15 +103,10 @@ someone new joins, and can chat with whoever else is around.
   dropped it mid-buffer. Both paths used to end in a player that looked
   like it was playing with no sound coming out.
 
-- **What's next, and finding the way back** — the card's footer names the
-  song that follows, which a station playing 95 tracks in a fixed order had
-  no way of telling anyone. Skipping, picking a song or scrubbing more than
-  30 seconds takes you off the shared schedule, and since "everyone is
-  hearing the same song" is the entire promise of the place, the card says
-  so when it stops being true and offers a button back —
-  `scheduleFromEpoch()` re-run on demand, landing you exactly where someone
-  arriving right now would land. Deliberately a button and not a timer: the
-  periodic version of this is what used to cut songs short mid-play.
+- **What's next** — the card's footer names the song that follows, which a
+  station playing 95 tracks in a fixed order had no way of telling anyone.
+  It shares the row with the video, YouTube and list buttons, which is what
+  freed the title above it from having to share its own.
 - **Live presence + join toasts** — powered by Supabase Realtime's
   [Presence](https://supabase.com/docs/guides/realtime/presence) feature
   (`src/hooks/usePresence.ts`). Each browser tab tracks itself in a shared
