@@ -21,11 +21,28 @@ export default function PhotoHero() {
   const { skyGradient, nightAlpha, glowAlpha } = getTimePalette(hour);
   const [index, setIndex] = useState(() => closestMediaIndex(hour));
   const indexRef = useRef(index);
+  // Which layers have had their file asked for. All twelve used to be
+  // requested at once — nine full-size photographs and three videos on
+  // preload="auto", about 4.5MB — to show one of them, on a site whose
+  // audience is largely on a phone on Indian mobile data. Each one holds
+  // for nine seconds, so the one on screen and the one after it is all
+  // anybody can possibly need loaded.
+  const [primed, setPrimed] = useState<Set<number>>(
+    () => new Set([index, (index + 1) % HERO_MEDIA.length]),
+  );
 
   useEffect(() => {
     const id = setInterval(() => {
-      indexRef.current = (indexRef.current + 1) % HERO_MEDIA.length;
-      setIndex(indexRef.current);
+      const next = (indexRef.current + 1) % HERO_MEDIA.length;
+      indexRef.current = next;
+      setIndex(next);
+      setPrimed((current) => {
+        const upcoming = (next + 1) % HERO_MEDIA.length;
+        if (current.has(upcoming)) return current;
+        const grown = new Set(current);
+        grown.add(upcoming);
+        return grown;
+      });
     }, HOLD_MS);
     return () => clearInterval(id);
   }, []);
@@ -42,7 +59,13 @@ export default function PhotoHero() {
     >
       <div className="photo-stack depth-mid" aria-hidden="true">
         {HERO_MEDIA.map((media, i) => (
-          <HeroLayer key={media.id} media={media} active={i === index} origin={ORIGINS[i % ORIGINS.length]} />
+          <HeroLayer
+            key={media.id}
+            media={media}
+            active={i === index}
+            primed={primed.has(i)}
+            origin={ORIGINS[i % ORIGINS.length]}
+          />
         ))}
       </div>
       <div className="hero-color-wash" style={{ background: skyGradient }} aria-hidden="true" />
@@ -53,7 +76,18 @@ export default function PhotoHero() {
   );
 }
 
-function HeroLayer({ media, active, origin }: { media: HeroMedia; active: boolean; origin: string }) {
+function HeroLayer({
+  media,
+  active,
+  primed,
+  origin,
+}: {
+  media: HeroMedia;
+  active: boolean;
+  /** False until this layer's turn is close enough to be worth downloading. */
+  primed: boolean;
+  origin: string;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Only the active layer actually plays — the rest sit paused on their
@@ -69,9 +103,11 @@ function HeroLayer({ media, active, origin }: { media: HeroMedia; active: boolea
     }
   }, [active]);
 
+  // An un-primed layer is an empty div: it still holds its place in the
+  // crossfade stack, it just hasn't fetched anything yet.
   return (
     <div className={`photo-layer${active ? " active" : ""}`}>
-      {media.type === "video" ? (
+      {!primed ? null : media.type === "video" ? (
         <video
           ref={videoRef}
           src={media.src}
@@ -83,7 +119,13 @@ function HeroLayer({ media, active, origin }: { media: HeroMedia; active: boolea
           preload="auto"
         />
       ) : (
-        <img src={media.src} alt="" style={{ transformOrigin: origin }} />
+        <img
+          src={media.src}
+          alt=""
+          decoding="async"
+          fetchPriority={active ? "high" : "low"}
+          style={{ transformOrigin: origin }}
+        />
       )}
     </div>
   );
