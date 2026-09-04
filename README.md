@@ -110,6 +110,15 @@ someone new joins, and can chat with whoever else is around.
   the artist names, since those are only written in Latin (इंदर → "ndr" →
   Inder Arya). That pass runs only as a fallback: skeletons are loose
   enough that mixing them into a search with exact hits would bury them.
+- **Voice search** — a mic in the search box dictates into it, which is
+  mostly for phones: saying a song name beats typing Devanagari on a
+  keyboard. Interim results are applied as they arrive, so the list filters
+  while you're still talking, and a phrase that matches nothing local flows
+  straight into the YouTube search below. Built on the Web Speech API
+  (`src/hooks/useVoiceSearch.ts`), which only takes one language at a time
+  — so there's a हिंदी / English toggle next to the "listening" line, and
+  the choice is remembered. Browsers without the API (Firefox, at the time
+  of writing) simply don't get the button.
 - **Songs that aren't in the list** — when a search matches nothing local,
   the panel searches YouTube and offers the results to play right there
   (`src/app/api/youtube-search/route.ts`). That route reads YouTube's
@@ -214,6 +223,7 @@ src/
   app/
     page.tsx              entry point
     api/geo/route.ts       coarse geo lookup for join toasts + chat
+    api/youtube-search/route.ts   song search for anything not in the list
     layout.tsx              fonts + metadata
     globals.css               all styling
     opengraph-image.tsx        generated social share card (og:image)
@@ -227,13 +237,16 @@ src/
     ReactionBursts.tsx           floating diya reactions
     JoinToasts.tsx               toast notifications
     ChatPanel.tsx                 floating chat panel
-    PlaylistPanel.tsx              full song list + request-to-play buttons
+    PlaylistPanel.tsx              song list, search, YouTube results
+    Tooltips.tsx                   one shared tooltip for every control
   hooks/
     usePresence.ts             Supabase Realtime presence (online count, joins, reactions)
     useChat.ts                   Supabase-backed chat (history + realtime)
+    useVoiceSearch.ts             Web Speech dictation for the search box
     useTimeOfDay.ts                local hour, updated once a minute
   lib/
     playlist.ts                 curated song list + shared-schedule math
+    search.ts                    bilingual playlist search (both scripts)
     heroPhotos.ts                 hero photo list + credits + time-of-day picker
     timePalette.ts                sky/star/glow color interpolation by hour
     geo.ts                        shared geo-lookup helper (presence + chat)

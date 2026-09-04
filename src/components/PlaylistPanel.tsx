@@ -2,8 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { YoutubeResult } from "@/app/api/youtube-search/route";
+import { useVoiceSearch } from "@/hooks/useVoiceSearch";
 import { PLAYLIST } from "@/lib/playlist";
 import { searchPlaylist } from "@/lib/search";
+
+/** Dictation only takes one language at a time, so it's a choice — and
+ *  one worth remembering, since people tend to search the same way. */
+const VOICE_LANGUAGES = [
+  { code: "hi-IN", label: "हिंदी" },
+  { code: "en-IN", label: "English" },
+] as const;
+const VOICE_LANGUAGE_KEY = "pahadi-adda-voice-lang";
 
 type RemoteState = {
   query: string;
@@ -26,6 +35,19 @@ export default function PlaylistPanel({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  // Read straight into the initial state rather than in an effect: this
+  // panel is only ever mounted by a click, so there's no server render for
+  // it to disagree with.
+  const [voiceLang, setVoiceLang] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(VOICE_LANGUAGE_KEY);
+      if (saved && VOICE_LANGUAGES.some((language) => language.code === saved)) return saved;
+    } catch {
+      // storage blocked — the default is fine
+    }
+    return VOICE_LANGUAGES[0].code;
+  });
+  const voice = useVoiceSearch(setQuery);
   const [remote, setRemote] = useState<RemoteState>({ query: "", status: "idle", items: [] });
   const activeRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -131,7 +153,52 @@ export default function PlaylistPanel({
             ✕
           </button>
         )}
+        {voice.supported && (
+          <button
+            className={`playlist-search-mic${voice.status === "listening" ? " on" : ""}`}
+            onClick={() => (voice.status === "listening" ? voice.stop() : voice.start(voiceLang))}
+            data-tip={
+              voice.status === "listening" ? "सुनना बंद करें" : "बोलकर खोजें"
+            }
+            aria-label={voice.status === "listening" ? "सुनना बंद करें" : "बोलकर खोजें"}
+            aria-pressed={voice.status === "listening"}
+          >
+            <MicIcon />
+          </button>
+        )}
       </div>
+
+      {voice.supported && voice.status !== "idle" && (
+        <div className="playlist-voice">
+          <span className={voice.status === "listening" ? "playlist-voice-live" : undefined}>
+            {voice.status === "listening"
+              ? "सुन रहे हैं… गीत या कलाकार का नाम बोलिए"
+              : voice.status === "denied"
+                ? "माइक की अनुमति नहीं मिली — ब्राउज़र सेटिंग में दें"
+                : voice.status === "unheard"
+                  ? "कुछ सुनाई नहीं दिया — फिर बोलिए"
+                  : "अभी बोलकर खोज नहीं हो पा रही"}
+          </span>
+          {VOICE_LANGUAGES.map((language) => (
+            <button
+              key={language.code}
+              className={`playlist-voice-lang${voiceLang === language.code ? " on" : ""}`}
+              onClick={() => {
+                setVoiceLang(language.code);
+                try {
+                  localStorage.setItem(VOICE_LANGUAGE_KEY, language.code);
+                } catch {
+                  // storage blocked — the choice just won't be remembered
+                }
+                voice.start(language.code);
+              }}
+              data-tip={`${language.label} में बोलिए`}
+            >
+              {language.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="playlist-list" ref={listRef}>
         {results.map((track) => {
@@ -221,6 +288,15 @@ function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s < 10 ? "0" : ""}${s}`;
+}
+
+function MicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" />
+      <path d="M18 11a1 1 0 1 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.92V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.08A6 6 0 0 0 18 11z" />
+    </svg>
+  );
 }
 
 function SearchIcon() {
