@@ -70,6 +70,12 @@ export default function PahadiAdda() {
   // because the timers/handlers below run outside render.
   const orderRef = useRef<number[]>(PLAYLIST.map((_, i) => i));
   const shuffleRef = useRef(false);
+  const startedRef = useRef(false);
+  // Volume/mute are mirrored into refs so a held-down arrow key compounds
+  // properly: key repeat fires many times per frame, far faster than state
+  // lands, and reading state there would apply the same step over and over.
+  const volumeRef = useRef(85);
+  const mutedRef = useRef(false);
 
   const { onlineCount, joinEvents, dismissJoinEvent, reactionEvents, sendReaction, dismissReactionEvent } =
     usePresence();
@@ -141,11 +147,29 @@ export default function PahadiAdda() {
     return () => clearTimeout(t);
   }, [trackToast]);
 
-  // progress bar tick
+  // progress bar tick — and the volume read-back. The IFrame API fires no
+  // event when someone uses the player's own volume slider (which is right
+  // there in video mode), so polling it is the only way our slider and mute
+  // icon can follow along. Skipped until playback has been started, since
+  // the player sits muted for autoplay until then.
   useEffect(() => {
     const id = setInterval(() => {
-      const t = playerRef.current?.getCurrentTime?.();
+      const player = playerRef.current;
+      if (!player) return;
+      const t = player.getCurrentTime?.();
       if (typeof t === "number") setElapsed(t);
+      if (!startedRef.current) return;
+      const v = player.getVolume?.();
+      if (typeof v === "number") {
+        const rounded = Math.round(v);
+        volumeRef.current = rounded;
+        setVolume((cur) => (cur === rounded ? cur : rounded));
+      }
+      const m = player.isMuted?.();
+      if (typeof m === "boolean") {
+        mutedRef.current = m;
+        setMuted((cur) => (cur === m ? cur : m));
+      }
     }, 500);
     return () => clearInterval(id);
   }, []);
@@ -272,6 +296,7 @@ export default function PahadiAdda() {
     playerRef.current?.unMute();
     playerRef.current?.setVolume(volume);
     playerRef.current?.playVideo();
+    startedRef.current = true;
     setStarted(true);
   }, [volume]);
 
@@ -283,28 +308,55 @@ export default function PahadiAdda() {
 
   function handleVolumeChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = Number(e.target.value);
+    volumeRef.current = v;
     setVolume(v);
     playerRef.current?.setVolume(v);
     if (v > 0 && muted) {
       playerRef.current?.unMute();
+      mutedRef.current = false;
       setMuted(false);
     }
   }
 
+  // Nudges the volume and keeps mute honest at the ends: stepping down to
+  // zero mutes, stepping up off zero unmutes.
+  const handleVolumeDelta = useCallback((delta: number) => {
+    const player = playerRef.current;
+    if (!player) return;
+    const from = mutedRef.current ? 0 : volumeRef.current;
+    const next = Math.min(100, Math.max(0, from + delta));
+    player.setVolume(next);
+    volumeRef.current = next;
+    setVolume(next);
+    if (next > 0 && mutedRef.current) {
+      player.unMute();
+      mutedRef.current = false;
+      setMuted(false);
+    } else if (next === 0 && !mutedRef.current) {
+      player.mute();
+      mutedRef.current = true;
+      setMuted(true);
+    }
+  }, []);
+
   const handleToggleMute = useCallback(() => {
     if (!playerRef.current) return;
-    if (muted) {
+    if (mutedRef.current) {
       playerRef.current.unMute();
+      mutedRef.current = false;
       setMuted(false);
     } else {
       playerRef.current.mute();
+      mutedRef.current = true;
       setMuted(true);
     }
-  }, [muted]);
+  }, []);
 
-  // Keyboard shortcuts — space to play/pause (or start, before the first
-  // click), arrows for prev/next, m to mute. Ignored while typing in the
-  // chat/nickname inputs so those keys behave normally there.
+  // Keyboard shortcuts — space plays/pauses (or starts, before the first
+  // click), ←/→ scrub ±5s, shift+←/→ (or p/n, as on YouTube) change track,
+  // ↑/↓ set the volume, m mutes, s shuffles, v opens the video view.
+  // Ignored while typing in the chat/nickname inputs so those keys behave
+  // normally there.
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null) {
       return (
@@ -321,8 +373,20 @@ export default function PahadiAdda() {
       } else if (!started) {
         return;
       } else if (e.key === "ArrowRight") {
-        handleNext();
+        if (e.shiftKey) handleNext();
+        else handleSeekBy(5);
       } else if (e.key === "ArrowLeft") {
+        if (e.shiftKey) handlePrev();
+        else handleSeekBy(-5);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        handleVolumeDelta(5);
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        handleVolumeDelta(-5);
+      } else if (e.key === "n" || e.key === "N") {
+        handleNext();
+      } else if (e.key === "p" || e.key === "P") {
         handlePrev();
       } else if (e.key === "m" || e.key === "M") {
         handleToggleMute();
@@ -343,6 +407,8 @@ export default function PahadiAdda() {
     handleToggleMute,
     handleToggleShuffle,
     handleToggleWatching,
+    handleSeekBy,
+    handleVolumeDelta,
   ]);
 
   async function handleShare() {
@@ -399,7 +465,12 @@ export default function PahadiAdda() {
         </div>
         <div className="topbar-actions">
           <div style={{ position: "relative" }}>
-            <button className="sharelink" onClick={handleShare}>
+            <button
+              className="sharelink"
+              onClick={handleShare}
+              title="दोस्तों को यहाँ बुलाओ"
+              aria-label="शेयर करें"
+            >
               <ShareIcon />
               <span>शेयर करें</span>
             </button>
@@ -408,7 +479,7 @@ export default function PahadiAdda() {
           <button
             className="credits-btn"
             onClick={() => setCreditsOpen((v) => !v)}
-            title="फोटो साभार"
+            title="फोटो किसकी हैं, देखें"
             aria-label="फोटो साभार"
             aria-pressed={creditsOpen}
           >
@@ -419,6 +490,7 @@ export default function PahadiAdda() {
             href="https://www.youtube.com/results?search_query=pahadi+uttarakhandi+songs"
             target="_blank"
             rel="noopener noreferrer"
+            title="YouTube पर और पहाड़ी गीत खोजें"
           >
             <YtIcon />
             <span>YouTube पर सुनो</span>
@@ -472,6 +544,20 @@ export default function PahadiAdda() {
                 onEnd={handleEnd}
                 onError={handleEnd}
               />
+              {/* At 96x54 the player's own controls are too small to hit,
+                  so in compact mode the thumbnail is one big target that
+                  opens the video view instead. Dropped in video mode,
+                  where the real controls are usable and get the clicks. */}
+              {!watching && (
+                <button
+                  className="art-expand"
+                  onClick={handleToggleWatching}
+                  title="वीडियो देखें (V)"
+                  aria-label="वीडियो देखें"
+                >
+                  <ExpandIcon />
+                </button>
+              )}
             </div>
             <div className="meta" key={currentIndex}>
               <div className="title-dev">{track.dev}</div>
@@ -480,7 +566,7 @@ export default function PahadiAdda() {
             <button
               className={`openyt${watching ? " on" : ""}`}
               onClick={handleToggleWatching}
-              title={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
+              title={watching ? "वीडियो छोटा करें (V)" : "वीडियो भी देखें (V)"}
               aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
               aria-pressed={watching}
             >
@@ -489,7 +575,7 @@ export default function PahadiAdda() {
             <button
               className="openyt"
               onClick={() => setPlaylistOpen((v) => !v)}
-              title="पूरी सूची देखें"
+              title="पूरी सूची देखें (सब गीत)"
               aria-label="पूरी सूची देखें"
               aria-pressed={playlistOpen}
             >
@@ -500,14 +586,14 @@ export default function PahadiAdda() {
               href={`https://www.youtube.com/watch?v=${track.videoId}`}
               target="_blank"
               rel="noopener noreferrer"
-              title="YouTube पर खोलें"
+              title="यह गीत YouTube पर खोलें"
               aria-label="YouTube पर खोलें"
             >
               <YtIcon />
             </a>
           </div>
 
-          <div className="seek" onClick={handleSeek}>
+          <div className="seek" onClick={handleSeek} title="गीत में कहीं भी जाएं">
             <div className="seek-fill" style={{ width: `${progressPct}%` }} />
           </div>
           <div className="times">
@@ -520,7 +606,7 @@ export default function PahadiAdda() {
               <button
                 className="ctrl-btn reaction-btn"
                 onClick={() => sendReaction("🪔")}
-                title="दिया जलाएं"
+                title="सबके लिए दिया जलाएं"
                 aria-label="दिया जलाएं"
               >
                 🪔
@@ -528,7 +614,7 @@ export default function PahadiAdda() {
               <button
                 className={`ctrl-btn shuffle-btn${shuffle ? " on" : ""}`}
                 onClick={handleToggleShuffle}
-                title={shuffle ? "शफल बंद करें — क्रम से चलेगा" : "शफल करें — बेतरतीब चलेगा"}
+                title={shuffle ? "शफल बंद करें — क्रम से चलेगा (S)" : "शफल करें — बेतरतीब चलेगा (S)"}
                 aria-label={shuffle ? "शफल बंद करें" : "शफल करें"}
                 aria-pressed={shuffle}
               >
@@ -537,15 +623,26 @@ export default function PahadiAdda() {
             </div>
 
             <div className="controls-transport">
-              <button className="ctrl-btn" onClick={handlePrev} aria-label="पिछला गीत">
+              <button
+                className="ctrl-btn"
+                onClick={handlePrev}
+                title="पिछला गीत (Shift + ← या P)"
+                aria-label="पिछला गीत"
+              >
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12L9 12z" /></svg>
               </button>
-              <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(-5)} aria-label="5 सेकंड पीछे">
+              <button
+                className="ctrl-btn seek-btn"
+                onClick={() => handleSeekBy(-5)}
+                title="5 सेकंड पीछे (←)"
+                aria-label="5 सेकंड पीछे"
+              >
                 <SeekBackIcon />
               </button>
               <button
                 className={`ctrl-btn play-btn${isPlaying ? " is-playing" : ""}`}
                 onClick={handlePlayPause}
+                title={isPlaying ? "रोकें (Space)" : "चलाएं (Space)"}
                 aria-label="चलाएं / रोकें"
               >
                 {isPlaying ? (
@@ -554,10 +651,20 @@ export default function PahadiAdda() {
                   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 )}
               </button>
-              <button className="ctrl-btn seek-btn" onClick={() => handleSeekBy(5)} aria-label="5 सेकंड आगे">
+              <button
+                className="ctrl-btn seek-btn"
+                onClick={() => handleSeekBy(5)}
+                title="5 सेकंड आगे (→)"
+                aria-label="5 सेकंड आगे"
+              >
                 <SeekForwardIcon />
               </button>
-              <button className="ctrl-btn" onClick={handleNext} aria-label="अगला गीत">
+              <button
+                className="ctrl-btn"
+                onClick={handleNext}
+                title="अगला गीत (Shift + → या N)"
+                aria-label="अगला गीत"
+              >
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l11-6z" /></svg>
               </button>
             </div>
@@ -566,6 +673,7 @@ export default function PahadiAdda() {
               <button
                 className="ctrl-btn mute-btn"
                 onClick={handleToggleMute}
+                title={muted ? "आवाज़ वापस लाएं (M)" : "म्यूट करें (M)"}
                 aria-label={muted ? "अनम्यूट करें" : "म्यूट करें"}
               >
                 {muted || volume === 0 ? <MuteIcon /> : <VolumeIcon />}
@@ -577,13 +685,18 @@ export default function PahadiAdda() {
                 max={100}
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
+                title="आवाज़ (↑ / ↓)"
                 aria-label="आवाज़"
               />
             </div>
           </div>
 
           {!started && (
-            <button className="start-overlay" onClick={handleStart}>
+            <button
+              className="start-overlay"
+              onClick={handleStart}
+              title="चलाना शुरू करें (Space)"
+            >
               🔊 सुनना शुरू करें
             </button>
           )}

@@ -543,6 +543,7 @@ body {
   gap: 12px;
 }
 .art {
+  position: relative;
   width: 96px;
   height: 54px;
   border-radius: 10px;
@@ -553,6 +554,38 @@ body {
 }
 .art iframe {
   display: block;
+}
+/* Compact mode only: covers the thumbnail so a tap opens the video view
+   rather than landing on the player's own unusably small controls. Stays
+   transparent — the video underneath is never hidden — apart from a corner
+   grip that says it can be opened. */
+.art-expand {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-warm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.art-expand svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.85;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+  transition: opacity 0.15s ease;
+}
+.art-expand:hover,
+.art-expand:focus-visible {
+  background: rgba(0, 0, 0, 0.35);
+}
+.art-expand:hover svg,
+.art-expand:focus-visible svg {
+  opacity: 1;
 }
 
 /* Video mode: the same player element, restyled into a stage above the

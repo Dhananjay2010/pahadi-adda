@@ -23,9 +23,13 @@ someone new joins, and can chat with whoever else is around.
   Uttarakhandi uploads have embedding switched off, and those fail at
   playback with IFrame error 150.
 - **Watching, not just listening** — the embedded player doubles as a video
-  view: the ▣ button on the card expands that *same* player into a 16:9
-  stage above the track title, so anyone who wants to watch the video stays
-  on the site instead of leaving for YouTube. It's a CSS change on the card
+  view: the ▣ button on the card (or clicking the thumbnail itself, or `v`)
+  expands that *same* player into a 16:9 stage above the track title, so
+  anyone who wants to watch the video stays on the site instead of leaving
+  for YouTube. In compact mode a transparent overlay makes the whole 96x54
+  thumbnail that one target — the player's own controls are unhittable at
+  that size — and it's dropped in video mode so the real controls get the
+  clicks. It's a CSS change on the card
   (`.card.watching` in `src/app/globals.css`) rather than a second player —
   the iframe is never remounted, so the song plays straight through the
   switch — and the choice is remembered per browser.
@@ -35,9 +39,10 @@ someone new joins, and can chat with whoever else is around.
   view-count order above. Like skipping, it's a personal deviation from
   what everyone else is hearing, so it lives in `localStorage` rather than
   being shared.
-- **Keyboard** — space plays/pauses (or starts the first time), ← / → move
-  a track, `m` mutes, `s` shuffles, `v` opens the video view. Ignored while
-  typing in chat.
+- **Keyboard** — space plays/pauses (or starts the first time), ← / →
+  scrub ±5s, shift + ← / → (or `p` / `n`, as on YouTube) change track, ↑ / ↓
+  set the volume, `m` mutes, `s` shuffles, `v` opens the video view. Every
+  control's tooltip names its shortcut. Ignored while typing in chat.
 - **Shared "sync"** — which song is "current" is computed from wall-clock
   time against a fixed schedule (`src/lib/playlist.ts`), so every visitor's
   browser lands on the same track independently, with no server needed for
@@ -146,7 +151,12 @@ extract just the audio are the kind of thing that gets an API integration
 shut down. So the "now playing" card embeds a small but real, visible
 YouTube player instead of hiding one off-screen; the custom prev/next/seek
 controls next to it just drive that same visible player via YouTube's
-official IFrame API, which is exactly what that API is for.
+official IFrame API, which is exactly what that API is for. The video image
+itself is never covered: the compact-mode click target over the thumbnail is
+transparent, and it exists to *open* the bigger player rather than to stand
+in for it. Volume is read back off the player on every tick (the IFrame API
+fires no event for it), so moving the player's own slider in video mode
+moves the site's too.
 
 If you'd rather have the songs play without any YouTube-branded frame at
 all, the only clean path is licensing the actual audio (or getting the

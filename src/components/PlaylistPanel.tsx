@@ -32,7 +32,12 @@ export default function PlaylistPanel({
     <div className="playlist-panel">
       <div className="chat-header">
         <span>पूरी सूची</span>
-        <button className="chat-close" onClick={onClose} aria-label="सूची बंद करें">
+        <button
+          className="chat-close"
+          onClick={onClose}
+          title="सूची बंद करें"
+          aria-label="सूची बंद करें"
+        >
           ✕
         </button>
       </div>
@@ -46,7 +51,11 @@ export default function PlaylistPanel({
               ref={index === currentIndex ? activeRef : undefined}
               className={`playlist-item${index === currentIndex ? " active" : ""}`}
             >
-              <button className="playlist-item-select" onClick={() => onSelect(index)}>
+              <button
+                className="playlist-item-select"
+                onClick={() => onSelect(index)}
+                title={`${track.dev} चलाएं`}
+              >
                 <span className="playlist-item-num">
                   {index === currentIndex ? <PlayingIcon /> : index + 1}
                 </span>

@@ -57,7 +57,12 @@ export default function ChatPanel() {
   return (
     <>
       {!isOpen && (
-        <button className="chat-fab" onClick={handleOpen} aria-label="चैट खोलें">
+        <button
+          className="chat-fab"
+          onClick={handleOpen}
+          title="सबसे बात करें"
+          aria-label="चैट खोलें"
+        >
           <ChatIcon />
           {unread > 0 && <span className="chat-badge">{unread > 9 ? "9+" : unread}</span>}
         </button>
@@ -67,7 +72,12 @@ export default function ChatPanel() {
         <div className="chat-panel">
           <div className="chat-header">
             <span>अड्डे की बातें</span>
-            <button className="chat-close" onClick={() => setIsOpen(false)} aria-label="चैट बंद करें">
+            <button
+              className="chat-close"
+              onClick={() => setIsOpen(false)}
+              title="चैट बंद करें"
+              aria-label="चैट बंद करें"
+            >
               ✕
             </button>
           </div>
@@ -101,7 +111,11 @@ export default function ChatPanel() {
                 }}
               />
             ) : (
-              <button className="chat-name-btn" onClick={() => setEditingName(true)}>
+              <button
+              className="chat-name-btn"
+              onClick={() => setEditingName(true)}
+              title="अपना नाम बदलें"
+            >
                 आप: <b>{nickname}</b> (बदलें)
               </button>
             )}
@@ -117,7 +131,13 @@ export default function ChatPanel() {
               placeholder="कुछ लिखें…"
               maxLength={300}
             />
-            <button className="chat-send" type="submit" disabled={!draft.trim() || !canSend} aria-label="भेजें">
+            <button
+              className="chat-send"
+              type="submit"
+              disabled={!draft.trim() || !canSend}
+              title="संदेश भेजें (Enter)"
+              aria-label="भेजें"
+            >
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20l18-8L3 4v6l12 2-12 2z" /></svg>
             </button>
           </form>

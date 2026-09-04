@@ -7,14 +7,19 @@ export default function PhotoCredits({ onClose }: { onClose: () => void }) {
     <div className="credits-panel" role="dialog" aria-label="फोटो साभार">
       <div className="chat-header">
         <span>फोटो साभार</span>
-        <button className="chat-close" onClick={onClose} aria-label="बंद करें">
+        <button className="chat-close" onClick={onClose} title="बंद करें" aria-label="बंद करें">
           ✕
         </button>
       </div>
       <div className="credits-list">
         {HERO_MEDIA.map((media) => (
           <div className="credits-item" key={media.id}>
-            <a href={media.credit.source} target="_blank" rel="noopener noreferrer">
+            <a
+              href={media.credit.source}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`${media.credit.platform} पर मूल फोटो देखें`}
+            >
               {media.credit.title}
             </a>
             <div className="credits-meta">
