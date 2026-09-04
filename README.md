@@ -41,8 +41,23 @@ someone new joins, and can chat with whoever else is around.
   being shared.
 - **Keyboard** — space plays/pauses (or starts the first time), ← / →
   scrub ±5s, shift + ← / → (or `p` / `n`, as on YouTube) change track, ↑ / ↓
-  set the volume, `m` mutes, `s` shuffles, `v` opens the video view. Every
-  control's tooltip names its shortcut. Ignored while typing in chat.
+  set the volume, `m` mutes, `s` shuffles, `v` opens the video view, `/`
+  opens the song list with the caret already in the search box, `?` lists
+  all of this, and Esc closes whatever panel is open. Every control's
+  tooltip names its shortcut, and the ⌨ button in the top bar opens the
+  same list the `?` key does (`src/components/ShortcutsPanel.tsx`) — a
+  shortcut named only inside a hover tooltip is invisible to anyone who
+  doesn't hover, and doesn't exist at all on a phone. Ignored while typing
+  in chat, and while the progress slider has focus, since that answers the
+  arrow keys itself.
+
+- **The progress bar** — a real slider (`src/components/SeekBar.tsx`), not a
+  4px `<div onClick>`: drag it, click it, tab to it and use the arrow keys,
+  Home/End and PageUp/PageDown. The visible track stays thin but the hit
+  area is 20px tall and spans the card, which is the difference between
+  hitting it with a thumb and not. Hovering shows the time under the
+  pointer, since that is the only question a click on a progress bar ever
+  asks.
 - **Tooltips** — one shared bubble for the whole page
   (`src/components/Tooltips.tsx`), driven by a `data-tip` attribute on any
   control. This replaces the browser's own `title` tooltips, which only
@@ -70,12 +85,33 @@ someone new joins, and can chat with whoever else is around.
   believable day, and a fixed vignette keeps the topbar/card text legible.
 - **Starting playback** — browsers only allow autoplay while muted, so the
   player begins muted and the "सुनना शुरू करें" click is what turns the
-  sound on. That click can land before the YouTube iframe is ready, so the
-  ask is recorded and replayed from `onReady` (the overlay stays up saying
-  it's connecting rather than disappearing on a click that did nothing),
-  and the unmute is confirmed for a couple of seconds afterwards in case
-  the player dropped it mid-buffer. Both paths used to end in a player that
-  looked like it was playing with no sound coming out.
+  sound on. Since *every* visitor has to get past that click, it is the
+  screen everyone sees first, and it gets a panel of its own above the card
+  (`src/components/StartPanel.tsx`): what this place is, how many people
+  are in it right now, and what is about to play. It used to be a
+  near-opaque slab dropped over the player, which hid all three of those
+  and left the card's controls showing faintly through it like a fault. The
+  card below now stays fully readable and simply isn't live yet — a click
+  anywhere on it starts the sound too, but its controls stay blocked, since
+  a "next" pressed before the unmute lands changes the song silently, which
+  is the exact failure this whole sequence exists to avoid.
+
+  The click can also land before the YouTube iframe is ready, so the ask is
+  recorded and replayed from `onReady` (the button stays up saying it's
+  connecting rather than disappearing on a click that did nothing), and the
+  unmute is confirmed for a couple of seconds afterwards in case the player
+  dropped it mid-buffer. Both paths used to end in a player that looked
+  like it was playing with no sound coming out.
+
+- **What's next, and finding the way back** — the card's footer names the
+  song that follows, which a station playing 95 tracks in a fixed order had
+  no way of telling anyone. Skipping, picking a song or scrubbing more than
+  30 seconds takes you off the shared schedule, and since "everyone is
+  hearing the same song" is the entire promise of the place, the card says
+  so when it stops being true and offers a button back —
+  `scheduleFromEpoch()` re-run on demand, landing you exactly where someone
+  arriving right now would land. Deliberately a button and not a timer: the
+  periodic version of this is what used to cut songs short mid-play.
 - **Live presence + join toasts** — powered by Supabase Realtime's
   [Presence](https://supabase.com/docs/guides/realtime/presence) feature
   (`src/hooks/usePresence.ts`). Each browser tab tracks itself in a shared
@@ -110,6 +146,16 @@ someone new joins, and can chat with whoever else is around.
   the artist names, since those are only written in Latin (इंदर → "ndr" →
   Inder Arya). That pass runs only as a fallback: skeletons are loose
   enough that mixing them into a search with exact hits would bury them.
+
+  Within each pass, matches that begin a word come first. Searching an
+  artist is the case that needs it: "नेगी" reaches the Latin names only
+  through the skeleton pass, where it comes down to the two consonants
+  "ng" — and "ng" turns up inside "Rongpaz" as readily as it starts
+  "Negi". The near misses are worth keeping (a skeleton is a guess about
+  spelling, and dropping the near misses is how a search stops finding
+  things), but they belong under the songs the person was obviously asking
+  for rather than shuffled in among them by view count. The panel header
+  shows how many matched, so a loose search reads as one.
 - **Voice search** — a mic in the search box dictates into it, which is
   mostly for phones: saying a song name beats typing Devanagari on a
   keyboard. Interim results are applied as they arrive, so the list filters
@@ -173,6 +219,24 @@ someone new joins, and can chat with whoever else is around.
   `src/app/globals.css`), so the list appears where the button that opens
   it is. It also opens scrolled to whatever is playing instead of at the
   top of ~95 rows, and follows along if the track changes while it's open.
+  The dock widens for whatever it is holding — 470px for the card alone,
+  560px with the list, 660px with the video — because a 95-song catalogue
+  read six rows at a time through a 430px slot, with a thousand pixels of
+  unused desktop either side of it, is a peephole onto the thing this site
+  is made of. Open the list *and* the video and the stage shrinks to a
+  16:9 panel beside the title, so the list still gets usable rows instead
+  of being squeezed down to a scrollbar.
+
+- **Getting at it without a mouse** — every control draws a visible focus
+  ring (the browser's own is a hairline in the accent colour, which against
+  a dark translucent card is no ring at all), the progress bar is a real
+  slider, track changes are announced through a live region, the Latin
+  lines are marked `lang="en"` inside a `lang="hi"` document so they aren't
+  read out with Hindi phonetics, and on a touch screen every control grows
+  to 44px — the transport buttons were 28-34px, which is the size that
+  makes people miss "next" and hit "forward 5s". Chat, photo credits, the
+  shortcut sheet and the song list share one corner of the screen, so
+  opening any of them closes the others, and Esc closes whatever is open.
 - **Share** — the "शेयर करें" button in the top bar uses the Web Share API
   (falling back to copying a link) so visitors can invite others in; the
   live online count is also mirrored into the browser tab's title.
@@ -270,15 +334,18 @@ src/
     twitter-image.tsx           re-exports opengraph-image.tsx for Twitter
   components/
     PahadiAdda.tsx           main client component: playback, controls, layout
-    PhotoHero.tsx              crossfading Ken Burns photo slideshow background
-    PhotoCredits.tsx            photo attribution panel (ⓘ button)
-    MistLayer.tsx, CelestialBody.tsx, ShootingStar.tsx  shared atmosphere, sun/moon arc
-    AmbientParticles.tsx        drifting ember/firefly atmosphere
-    ReactionBursts.tsx           floating diya reactions
-    JoinToasts.tsx               toast notifications
-    ChatPanel.tsx                 floating chat panel
-    PlaylistPanel.tsx              song list, search, YouTube results
-    Tooltips.tsx                   one shared tooltip for every control
+    StartPanel.tsx             the welcome / turn-the-sound-on panel
+    SeekBar.tsx                 progress bar: drag, click, keyboard, hover preview
+    ShortcutsPanel.tsx           the keyboard shortcuts, written down
+    PhotoHero.tsx                 crossfading Ken Burns photo slideshow background
+    PhotoCredits.tsx               photo attribution panel (ⓘ button)
+    MistLayer.tsx, ShootingStar.tsx  shared atmosphere
+    AmbientParticles.tsx             drifting ember/firefly atmosphere
+    ReactionBursts.tsx                floating diya reactions
+    JoinToasts.tsx                     toast notifications
+    ChatPanel.tsx                       floating chat panel
+    PlaylistPanel.tsx                    song list, search, YouTube results
+    Tooltips.tsx                          one shared tooltip for every control
   hooks/
     usePresence.ts             Supabase Realtime presence (online count, joins, reactions)
     useChat.ts                   Supabase-backed chat (history + realtime)
