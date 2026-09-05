@@ -518,8 +518,9 @@ export default function PahadiAdda() {
 
   // Keyboard shortcuts — space plays/pauses (or starts, before the first
   // click), ←/→ scrub ±5s, shift+←/→ (or p/n, as on YouTube) change track,
-  // ↑/↓ set the volume, m mutes, s shuffles, v opens the video view, "/"
-  // searches, "?" lists all of this, Esc closes whatever is open.
+  // ↑/↓ set the volume (or walk the song list, while that is open), m
+  // mutes, s shuffles, v opens the video view, "/" searches, "?" lists all
+  // of this, Esc closes whatever is open.
   // Ignored while typing in the chat/nickname inputs so those keys behave
   // normally there, and while a control that answers the arrow keys itself
   // (the progress slider) has focus, which would otherwise seek twice.
@@ -557,6 +558,12 @@ export default function PahadiAdda() {
         return;
       }
       if (ownsKeys(e.target) && e.key.startsWith("Arrow")) return;
+      // While the song list is open, up/down walk it instead of moving the
+      // volume — PlaylistPanel owns them. The list is only ever open
+      // because someone went looking for a song, and stepping through
+      // results is what they want the arrows for at that moment; the
+      // volume gets them back the instant the list closes.
+      if (playlistOpen && (e.key === "ArrowUp" || e.key === "ArrowDown")) return;
       if (e.code === "Space") {
         e.preventDefault();
         if (!started) handleStart();
@@ -604,6 +611,7 @@ export default function PahadiAdda() {
     openOnly,
     togglePanel,
     shortcutsOpen,
+    playlistOpen,
   ]);
 
   async function handleShare() {

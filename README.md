@@ -43,7 +43,10 @@ someone new joins, and can chat with whoever else is around.
   scrub ±5s, shift + ← / → (or `p` / `n`, as on YouTube) change track, ↑ / ↓
   set the volume, `m` mutes, `s` shuffles, `v` opens the video view, `/`
   opens the song list with the caret already in the search box, `?` lists
-  all of this, and Esc closes whatever panel is open. Every control's
+  all of this, and Esc closes whatever panel is open.
+
+  While the song list is open, ↑ / ↓ walk it and Enter plays what they are
+  pointing at (see below) — the volume gets them back the moment it closes. Every control's
   tooltip names its shortcut, and the ⌨ button in the top bar opens the
   same list the `?` key does (`src/components/ShortcutsPanel.tsx`) — a
   shortcut named only inside a hover tooltip is invisible to anyone who
@@ -151,6 +154,19 @@ someone new joins, and can chat with whoever else is around.
   things), but they belong under the songs the person was obviously asking
   for rather than shuffled in among them by view count. The panel header
   shows how many matched, so a loose search reads as one.
+
+  A search that starts on the keyboard finishes there. Typing puts the
+  pointer on the top match, so Enter plays it without an arrow key being
+  touched; ↑ / ↓ move it, Home / End jump to either end, and it wraps at
+  both. The YouTube results share the pointer's index with the local ones —
+  two sections on screen, one list to somebody holding the down arrow — so
+  arrowing past the last local match carries straight on into them. Opened
+  without a search, nothing is pointed at until the first arrow, which lands
+  on whatever is playing rather than on song 1 of 95: that row is already
+  in view, so the list doesn't jump out from under anyone. Focus stays in
+  the search box throughout, so the query can still be refined mid-walk,
+  and the moving highlight is announced through a live region, since
+  otherwise it is only a colour.
 - **Voice search** — a mic in the search box dictates into it, which is
   mostly for phones: saying a song name beats typing Devanagari on a
   keyboard. Interim results are applied as they arrive, so the list filters

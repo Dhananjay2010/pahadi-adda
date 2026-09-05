@@ -1838,6 +1838,16 @@ body {
 .playlist-item.active {
   background: rgba(237, 169, 58, 0.14);
 }
+/* Where the arrow keys are pointing. A ring rather than a fill, so it stays
+   legible on the row that is also the one playing (marigold fill) and on the
+   one under the mouse (pale fill) — all three can be the same row. */
+.playlist-item.pointed {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1.5px rgba(237, 169, 58, 0.75);
+}
+.playlist-item.active.pointed {
+  background: rgba(237, 169, 58, 0.2);
+}
 .playlist-item-select {
   display: flex;
   align-items: center;

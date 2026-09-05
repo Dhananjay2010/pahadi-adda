@@ -15,6 +15,8 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["←", "→"], label: "5 सेकंड पीछे / आगे" },
   { keys: ["Shift + ←/→", "P", "N"], label: "पिछला / अगला गीत" },
   { keys: ["↑", "↓"], label: "आवाज़ कम / ज़्यादा" },
+  { keys: ["↑", "↓"], label: "सूची खुली हो तो — गीत चुनें" },
+  { keys: ["Enter"], label: "चुना हुआ गीत चलाएं" },
   { keys: ["M"], label: "म्यूट करें" },
   { keys: ["S"], label: "शफल" },
   { keys: ["V"], label: "वीडियो देखें" },

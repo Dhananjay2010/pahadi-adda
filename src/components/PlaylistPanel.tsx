@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { YoutubeResult } from "@/app/api/youtube-search/route";
 import { useVoiceSearch } from "@/hooks/useVoiceSearch";
 import { PLAYLIST } from "@/lib/playlist";
@@ -20,6 +20,16 @@ type RemoteState = {
   items: YoutubeResult[];
 };
 
+/**
+ * One flat list of everything the arrow keys walk — the tracks that matched
+ * locally, then any YouTube results shown underneath them. They are two
+ * sections on screen but one list to somebody holding the down arrow, so
+ * they share a single index.
+ */
+type Row =
+  | { kind: "track"; index: number; label: string }
+  | { kind: "remote"; item: YoutubeResult; label: string };
+
 export default function PlaylistPanel({
   currentIndex,
   guestVideoId,
@@ -38,6 +48,11 @@ export default function PlaylistPanel({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  // Which row the keyboard is pointing at, as an index into `rows` below.
+  // -1 is "no pointer yet", which is how browsing the whole list starts:
+  // highlighting song 1 of 95 while someone is looking at the one playing
+  // in the middle of the list would be answering a question nobody asked.
+  const [cursor, setCursor] = useState(-1);
   // Read straight into the initial state rather than in an effect: this
   // panel is only ever mounted by a click, so there's no server render for
   // it to disagree with.
@@ -50,9 +65,20 @@ export default function PlaylistPanel({
     }
     return VOICE_LANGUAGES[0].code;
   });
-  const voice = useVoiceSearch(setQuery);
+  // Every route into the search box goes through here so the pointer can be
+  // reset with it: a new search means the old highlight is pointing at a row
+  // that may no longer exist, let alone still be the best answer. Typing
+  // puts it on the top match, so Enter plays what you were looking for
+  // without touching an arrow key at all.
+  const applyQuery = useCallback((value: string) => {
+    setQuery(value);
+    setCursor(value.trim().length >= 2 ? 0 : -1);
+  }, []);
+
+  const voice = useVoiceSearch(applyQuery);
   const [remote, setRemote] = useState<RemoteState>({ query: "", status: "idle", items: [] });
   const activeRef = useRef<HTMLDivElement | null>(null);
+  const cursorRef = useRef<HTMLElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const opened = useRef(false);
@@ -125,6 +151,86 @@ export default function PlaylistPanel({
   const current: RemoteState =
     remote.query === query.trim() ? remote : { query: query.trim(), status: "loading", items: [] };
 
+  const rows: Row[] = useMemo(() => {
+    const local: Row[] = results.map((track) => ({
+      kind: "track",
+      index: PLAYLIST.indexOf(track),
+      label: `${track.dev}, ${track.lat}`,
+    }));
+    if (!nothingLocally) return local;
+    return [
+      ...local,
+      ...current.items.map<Row>((item) => ({
+        kind: "remote",
+        item,
+        label: `${item.title}, ${item.channel}, YouTube`,
+      })),
+    ];
+  }, [results, nothingLocally, current.items]);
+
+  const cursorRow = cursor >= 0 && cursor < rows.length ? rows[cursor] : null;
+
+  const play = useCallback(
+    (row: Row) => {
+      if (row.kind === "track") onSelect(row.index);
+      else onPlayExternal(row.item);
+    },
+    [onSelect, onPlayExternal],
+  );
+
+  // Up/down walk the results and Enter plays the one under the pointer, so a
+  // search that started with "/" can finish without reaching for the mouse.
+  // The player's own up/down (volume) stands down while this panel is open —
+  // see the keyboard handler in PahadiAdda.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey || rows.length === 0) return;
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const step = e.key === "ArrowDown" ? 1 : -1;
+        setCursor((at) => {
+          if (at < 0) {
+            // Nothing pointed at yet. Start from whatever is playing rather
+            // than from the top of ninety-five rows — it is already the row
+            // in view, so the list doesn't jump out from under anyone.
+            const playing = rows.findIndex(
+              (row) => row.kind === "track" && row.index === currentIndex,
+            );
+            return playing >= 0 ? playing : step > 0 ? 0 : rows.length - 1;
+          }
+          return (at + step + rows.length) % rows.length;
+        });
+        return;
+      }
+
+      if (e.key === "Home" || e.key === "End") {
+        e.preventDefault();
+        setCursor(e.key === "Home" ? 0 : rows.length - 1);
+        return;
+      }
+
+      if (e.key === "Enter") {
+        // A row (or the mic, or the clear button) that already has focus
+        // gets to answer its own Enter — otherwise one press fires twice.
+        if (e.target instanceof HTMLElement && e.target.closest("button, a")) return;
+        // With a search typed, Enter means "the top match" even if the
+        // arrows were never touched.
+        const row = cursorRow ?? (searching ? rows[0] : null);
+        if (!row) return;
+        e.preventDefault();
+        play(row);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [rows, cursorRow, currentIndex, searching, play]);
+
+  // Keep the pointed-at row on screen as it moves.
+  useEffect(() => {
+    if (cursor >= 0) cursorRef.current?.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
+
   return (
     <div className="playlist-panel">
       <div className="panel-header">
@@ -153,20 +259,20 @@ export default function PlaylistPanel({
           ref={searchRef}
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => applyQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== "Escape") return;
-            if (query) setQuery("");
+            if (query) applyQuery("");
             else onClose();
           }}
           placeholder="गीत या कलाकार खोजें…"
-          data-tip="हिंदी या अंग्रेज़ी, दोनों चलेंगे"
+          data-tip="हिंदी या अंग्रेज़ी · ↑ ↓ से चुनें, Enter से चलाएं"
           aria-label="गीत खोजें"
         />
         {query && (
           <button
             className="playlist-search-clear"
-            onClick={() => setQuery("")}
+            onClick={() => applyQuery("")}
             data-tip="खोज हटाएं"
             aria-label="खोज हटाएं"
           >
@@ -232,14 +338,18 @@ export default function PlaylistPanel({
       )}
 
       <div className="playlist-list" ref={listRef}>
-        {results.map((track) => {
+        {results.map((track, position) => {
           const index = PLAYLIST.indexOf(track);
           const active = index === currentIndex && !guestVideoId;
+          const pointed = cursor === position;
           return (
             <div
               key={track.id}
-              ref={index === currentIndex ? activeRef : undefined}
-              className={`playlist-item${active ? " active" : ""}`}
+              ref={(node) => {
+                if (index === currentIndex) activeRef.current = node;
+                if (pointed) cursorRef.current = node;
+              }}
+              className={`playlist-item${active ? " active" : ""}${pointed ? " pointed" : ""}`}
             >
               <button
                 className="playlist-item-select"
@@ -282,12 +392,17 @@ export default function PlaylistPanel({
                     ? "हमारी सूची में नहीं है — YouTube पर मिला"
                     : "कुछ नहीं मिला"}
             </div>
-            {current.items.map((item) => (
+            {current.items.map((item, position) => {
+              const pointed = cursor === results.length + position;
+              return (
               <button
                 key={item.videoId}
+                ref={(node) => {
+                  if (pointed) cursorRef.current = node;
+                }}
                 className={`playlist-item playlist-remote-item${
                   guestVideoId === item.videoId ? " active" : ""
-                }`}
+                }${pointed ? " pointed" : ""}`}
                 onClick={() => onPlayExternal(item)}
                 data-tip={`${item.title} चलाएं`}
               >
@@ -307,9 +422,16 @@ export default function PlaylistPanel({
                   </span>
                 </span>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
+      </div>
+
+      {/* The moving highlight is only a colour; this is what says it out
+          loud for anyone arrowing through the list without seeing it. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {cursorRow ? cursorRow.label : ""}
       </div>
     </div>
   );
