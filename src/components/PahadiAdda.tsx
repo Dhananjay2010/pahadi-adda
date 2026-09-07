@@ -61,6 +61,13 @@ export default function PahadiAdda() {
   // never on a tap, where it would throw up the on-screen keyboard over the
   // list they just asked to see.
   const [focusSearch, setFocusSearch] = useState(false);
+  // The last thing searched for, kept out here because the panel is
+  // unmounted when it closes and would otherwise forget it. Searching,
+  // playing something, then pressing "/" again used to hand back an empty
+  // box — for a room you are picking several songs out of, that is the
+  // same search typed twice. Deliberately not persisted: a search from
+  // yesterday is not an answer to anything.
+  const [lastQuery, setLastQuery] = useState("");
   const [volume, setVolume] = useState(85);
   const [muted, setMuted] = useState(false);
   const [shareNotice, setShareNotice] = useState(false);
@@ -71,6 +78,7 @@ export default function PahadiAdda() {
   // moves in the tree, so the iframe is never torn down and playback runs
   // straight through the switch.
   const [watching, setWatching] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   // The start click is held here when it lands before the player exists.
   const [pendingStart, setPendingStart] = useState(false);
   // A song found through YouTube search, playing in place of a playlist
@@ -102,6 +110,10 @@ export default function PahadiAdda() {
   // What's actually loaded in the player — a playlist track or a guest.
   const currentVideoIdRef = useRef(PLAYLIST[initial.index].videoId);
   const diyaRef = useRef<HTMLButtonElement>(null);
+  const artRef = useRef<HTMLDivElement>(null);
+  // Mirrors `watching` for the handlers below, which need to read it without
+  // being rebuilt every time it flips.
+  const watchingRef = useRef(false);
   // Whatever had focus when a panel was opened, so Esc can give it back.
   const returnFocusRef = useRef<HTMLElement | null>(null);
   // Volume/mute are mirrored into refs so a held-down arrow key compounds
@@ -293,7 +305,10 @@ export default function PahadiAdda() {
   // disagrees with the served HTML.
   useEffect(() => {
     const id = setTimeout(() => {
-      if (localStorage.getItem("pahadi-adda-watching") === "1") setWatching(true);
+      if (localStorage.getItem("pahadi-adda-watching") === "1") {
+        watchingRef.current = true;
+        setWatching(true);
+      }
       if (localStorage.getItem("pahadi-adda-shuffle") === "1") {
         shuffleRef.current = true;
         setShuffle(true);
@@ -359,11 +374,38 @@ export default function PahadiAdda() {
   }, [applyOrder]);
 
   const handleToggleWatching = useCallback(() => {
-    setWatching((v) => {
-      localStorage.setItem("pahadi-adda-watching", v ? "0" : "1");
-      return !v;
-    });
+    const next = !watchingRef.current;
+    watchingRef.current = next;
+    setWatching(next);
+    localStorage.setItem("pahadi-adda-watching", next ? "1" : "0");
   }, []);
+
+  /**
+   * Fullscreen, on the player iframe itself.
+   *
+   * There is no YouTube API for this — the IFrame API exposes no fullscreen
+   * method — so it goes through the browser's own Fullscreen API. The iframe
+   * is the element handed over rather than the card around it, because the
+   * iframe already sizes itself to whatever box it is given and so needs no
+   * special stylesheet for the one state where that box is the whole screen.
+   *
+   * iPhones don't get this: iOS Safari only ever fullscreens a native
+   * <video>, and the only one here is inside YouTube's iframe where it
+   * isn't ours to ask. There `f` just opens the video view, and YouTube's
+   * own fullscreen button in the player still works.
+   */
+  const handleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      return;
+    }
+    // Coming back out should land on the big player, not on a 112px
+    // thumbnail, so the video view comes on either way.
+    if (!watchingRef.current) handleToggleWatching();
+    const frame = artRef.current?.querySelector("iframe");
+    if (!frame || !document.fullscreenEnabled) return;
+    frame.requestFullscreen().catch(() => {});
+  }, [handleToggleWatching]);
 
   /**
    * Plays something found on YouTube that isn't in the playlist. The
@@ -466,6 +508,15 @@ export default function PahadiAdda() {
     }
   }, []);
 
+  // So the shortcut sheet and the tooltip can say which way `f` will go —
+  // and so an exit the browser triggers itself (Esc, or the player's own
+  // fullscreen button) is noticed rather than leaving the label stale.
+  useEffect(() => {
+    const sync = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
   const handleToggleMute = useCallback(() => {
     if (!playerRef.current) return;
     if (mutedRef.current) {
@@ -537,8 +588,11 @@ export default function PahadiAdda() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Esc is the one key that has to work from inside a text field too —
-      // it is how you get back out of the search box.
+      // it is how you get back out of the search box. Except in fullscreen,
+      // where the browser is already using it to bring us back out and
+      // closing a panel at the same time would be two answers to one press.
       if (e.key === "Escape") {
+        if (document.fullscreenElement) return;
         if (anyPanelOpen) {
           e.preventDefault();
           openOnly(null);
@@ -592,6 +646,8 @@ export default function PahadiAdda() {
         handleToggleShuffle();
       } else if (e.key === "v" || e.key === "V") {
         handleToggleWatching();
+      } else if (e.key === "f" || e.key === "F") {
+        handleFullscreen();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -605,6 +661,7 @@ export default function PahadiAdda() {
     handleToggleMute,
     handleToggleShuffle,
     handleToggleWatching,
+    handleFullscreen,
     handleSeekBy,
     handleVolumeDelta,
     anyPanelOpen,
@@ -728,6 +785,8 @@ export default function PahadiAdda() {
             currentIndex={currentIndex}
             guestVideoId={guest?.videoId ?? null}
             autoFocusSearch={focusSearch}
+            initialQuery={lastQuery}
+            onQueryChange={setLastQuery}
             onSelect={handleSelectTrack}
             onPlayExternal={handlePlayExternal}
             onClose={() => openOnly(null)}
@@ -743,7 +802,7 @@ export default function PahadiAdda() {
         )}
         <div className="card">
           <div className="card-row">
-            <div className="art">
+            <div className="art" ref={artRef}>
               <YouTube
                 videoId={PLAYLIST[initial.index].videoId}
                 opts={{
@@ -920,7 +979,11 @@ export default function PahadiAdda() {
               <button
                 className={`foot-btn${watching ? " on" : ""}`}
                 onClick={handleToggleWatching}
-                data-tip={watching ? "वीडियो छोटा करें (V)" : "वीडियो भी देखें (V)"}
+                data-tip={
+                  watching
+                    ? `वीडियो छोटा करें (V) · ${isFullscreen ? "F से बाहर आएं" : "F से पूरी स्क्रीन"}`
+                    : "वीडियो भी देखें (V) · F से पूरी स्क्रीन"
+                }
                 aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
                 aria-pressed={watching}
               >

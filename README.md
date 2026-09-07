@@ -33,6 +33,18 @@ someone new joins, and can chat with whoever else is around.
   (`.card.watching` in `src/app/globals.css`) rather than a second player —
   the iframe is never remounted, so the song plays straight through the
   switch — and the choice is remembered per browser.
+
+  `f` puts it fullscreen. There is no YouTube API for that — the IFrame API
+  exposes no fullscreen method — so it goes through the browser's own
+  Fullscreen API, and the element handed over is the iframe itself rather
+  than the card around it, because the iframe already sizes itself to
+  whatever box it is given and so needs no stylesheet for the one state
+  where that box is the whole screen. Pressing `f` from compact mode opens
+  the video view on the way, so leaving fullscreen lands on the big player
+  rather than back on a 112px thumbnail. iPhones are the exception: iOS
+  Safari only ever fullscreens a native `<video>`, and the only one here is
+  inside YouTube's iframe where it isn't ours to ask — there `f` just opens
+  the video view, and YouTube's own fullscreen button still works.
 - **Shuffle** — the ⤬ button next to the diya reshuffles the play order
   (Fisher-Yates over the whole list, with the current song pinned to the
   front so turning it on never cuts a song off). Off, tracks play in the
@@ -167,6 +179,16 @@ someone new joins, and can chat with whoever else is around.
   the search box throughout, so the query can still be refined mid-walk,
   and the moving highlight is announced through a live region, since
   otherwise it is only a colour.
+
+  The panel is unmounted when it closes, so the query is kept outside it
+  (in `PahadiAdda`) and handed back on the way in. Searching, playing
+  something and pressing `/` again used to return an empty box, which for a
+  room you are picking several songs out of is the same search typed twice.
+  It now comes back filled and *selected*, so keeping it costs nothing and
+  discarding it costs one keystroke, and the pointer starts on whatever
+  that search is currently playing, so the down arrow carries on to the next
+  one. Not persisted across reloads — a search from yesterday is not an
+  answer to anything — and clearing the box forgets it.
 - **Voice search** — a mic in the search box dictates into it, which is
   mostly for phones: saying a song name beats typing Devanagari on a
   keyboard. Interim results are applied as they arrive, so the list filters
@@ -218,7 +240,20 @@ someone new joins, and can chat with whoever else is around.
   button at all.
 - **Songs that aren't in the list** — when a search matches nothing local,
   the panel searches YouTube and offers the results to play right there
-  (`src/app/api/youtube-search/route.ts`). That route reads YouTube's
+  (`src/app/api/youtube-search/route.ts`). When the search *did* match
+  something, YouTube is offered rather than run: a single row under the
+  results, `YouTube पर "…" खोजें`, one click or one Enter away — the arrow
+  keys walk it like any other row, and the results take its place when they
+  arrive, so the pointer is already on the first of them.
+
+  The distinction is deliberate. The route is a scrape of YouTube's public
+  results page, which takes about a second and is fragile by design, and
+  what it returns isn't checked to be embeddable the way the 95 songs here
+  are — a fair number of Uttarakhandi uploads have embedding switched off
+  and fail on play. Running that on every keystroke-pause of every search
+  would put unverified results beside verified ones as a matter of course,
+  and would multiply the traffic on the fallback that actually matters: the
+  one where the song genuinely isn't in the list. That route reads YouTube's
   public results page rather than the Data API, so there's no key to
   configure and nothing to set up on a fresh deploy — it also means it can
   break if YouTube reshapes that page, so every failure is soft and the

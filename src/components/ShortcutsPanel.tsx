@@ -20,6 +20,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["M"], label: "म्यूट करें" },
   { keys: ["S"], label: "शफल" },
   { keys: ["V"], label: "वीडियो देखें" },
+  { keys: ["F"], label: "पूरी स्क्रीन पर वीडियो" },
   { keys: ["/"], label: "गीत खोजें" },
   { keys: ["?"], label: "यही सूची" },
   { keys: ["Esc"], label: "खुला हुआ पैनल बंद करें" },

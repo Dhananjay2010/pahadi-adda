@@ -28,12 +28,17 @@ type RemoteState = {
  */
 type Row =
   | { kind: "track"; index: number; label: string }
-  | { kind: "remote"; item: YoutubeResult; label: string };
+  | { kind: "remote"; item: YoutubeResult; label: string }
+  /** The "look on YouTube as well" row — an action, but the arrows walk it
+   *  like any other, so it lives in the same list. */
+  | { kind: "ask"; label: string };
 
 export default function PlaylistPanel({
   currentIndex,
   guestVideoId,
   autoFocusSearch = false,
+  initialQuery = "",
+  onQueryChange,
   onSelect,
   onPlayExternal,
   onClose,
@@ -43,16 +48,36 @@ export default function PlaylistPanel({
   guestVideoId: string | null;
   /** Opened by the "/" shortcut — put the caret in the box. Never on a tap. */
   autoFocusSearch?: boolean;
+  /** What was searched for last time this panel was open. */
+  initialQuery?: string;
+  /** Hands each change back up, since this panel is unmounted when closed. */
+  onQueryChange?: (query: string) => void;
   onSelect: (index: number) => void;
   onPlayExternal: (result: YoutubeResult) => void;
   onClose: () => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   // Which row the keyboard is pointing at, as an index into `rows` below.
   // -1 is "no pointer yet", which is how browsing the whole list starts:
   // highlighting song 1 of 95 while someone is looking at the one playing
   // in the middle of the list would be answering a question nobody asked.
-  const [cursor, setCursor] = useState(-1);
+  //
+  // Reopening on a remembered search is the exception: point at the song
+  // that search is currently playing, so the next press of the down arrow
+  // carries on to the one after it rather than restarting at the top.
+  const [cursor, setCursor] = useState(() => {
+    if (initialQuery.trim().length < 2) return -1;
+    const at = searchPlaylist(initialQuery).findIndex(
+      (track) => PLAYLIST.indexOf(track) === currentIndex,
+    );
+    return at >= 0 ? at : 0;
+  });
+  // Whether the YouTube search has been asked for. It runs by itself only
+  // when the list has nothing at all — otherwise it waits to be invited,
+  // because it is a scrape of YouTube's results page (roughly a second,
+  // and fragile by design) and because the 95 songs here are checked to be
+  // embeddable where anything it returns might not be.
+  const [askedRemote, setAskedRemote] = useState(false);
   // Read straight into the initial state rather than in an effect: this
   // panel is only ever mounted by a click, so there's no server render for
   // it to disagree with.
@@ -70,10 +95,15 @@ export default function PlaylistPanel({
   // that may no longer exist, let alone still be the best answer. Typing
   // puts it on the top match, so Enter plays what you were looking for
   // without touching an arrow key at all.
-  const applyQuery = useCallback((value: string) => {
-    setQuery(value);
-    setCursor(value.trim().length >= 2 ? 0 : -1);
-  }, []);
+  const applyQuery = useCallback(
+    (value: string) => {
+      setQuery(value);
+      setCursor(value.trim().length >= 2 ? 0 : -1);
+      setAskedRemote(false);
+      onQueryChange?.(value);
+    },
+    [onQueryChange],
+  );
 
   const voice = useVoiceSearch(applyQuery);
   const [remote, setRemote] = useState<RemoteState>({ query: "", status: "idle", items: [] });
@@ -86,12 +116,19 @@ export default function PlaylistPanel({
   const results = useMemo(() => searchPlaylist(query), [query]);
   const searching = query.trim().length >= 2;
   const nothingLocally = searching && results.length === 0;
+  // The list found something, but YouTube hasn't been asked yet — so offer.
+  const offeringRemote = searching && results.length > 0 && !askedRemote;
+  const showingRemote = nothingLocally || (searching && askedRemote);
 
   // Someone who opened this by typing "/" is mid-keystroke; put them in the
   // box. Someone who tapped the button wants to look at the list, and
   // focusing the input there would throw a keyboard over half of it.
   useEffect(() => {
-    if (autoFocusSearch) searchRef.current?.focus();
+    if (!autoFocusSearch) return;
+    searchRef.current?.focus();
+    // Selected, not just filled: a remembered search is only useful if it
+    // costs nothing to discard, and typing over a selection is nothing.
+    searchRef.current?.select();
   }, [autoFocusSearch]);
 
   // Open on whatever is playing rather than at the top of a 95-song list:
@@ -117,7 +154,7 @@ export default function PlaylistPanel({
   // this runs off typing, and only for queries the local list has already
   // failed to answer.
   useEffect(() => {
-    if (!nothingLocally) return;
+    if (!showingRemote) return;
     const q = query.trim();
     const controller = new AbortController();
     const timer = setTimeout(async () => {
@@ -142,7 +179,7 @@ export default function PlaylistPanel({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, nothingLocally]);
+  }, [query, showingRemote]);
 
   // Results that belong to an older query are no longer an answer to what's
   // on screen; until the debounce and the request land, this is a search in
@@ -157,7 +194,10 @@ export default function PlaylistPanel({
       index: PLAYLIST.indexOf(track),
       label: `${track.dev}, ${track.lat}`,
     }));
-    if (!nothingLocally) return local;
+    if (offeringRemote) {
+      return [...local, { kind: "ask", label: `YouTube पर ${query.trim()} खोजें` }];
+    }
+    if (!showingRemote) return local;
     return [
       ...local,
       ...current.items.map<Row>((item) => ({
@@ -166,14 +206,18 @@ export default function PlaylistPanel({
         label: `${item.title}, ${item.channel}, YouTube`,
       })),
     ];
-  }, [results, nothingLocally, current.items]);
+  }, [results, offeringRemote, showingRemote, current.items, query]);
 
   const cursorRow = cursor >= 0 && cursor < rows.length ? rows[cursor] : null;
 
-  const play = useCallback(
+  const activate = useCallback(
     (row: Row) => {
       if (row.kind === "track") onSelect(row.index);
-      else onPlayExternal(row.item);
+      else if (row.kind === "remote") onPlayExternal(row.item);
+      // The offer row keeps the pointer where it is: once the results land
+      // they take this row's place in the list, so the pointer is already
+      // on the first of them.
+      else setAskedRemote(true);
     },
     [onSelect, onPlayExternal],
   );
@@ -219,12 +263,12 @@ export default function PlaylistPanel({
         const row = cursorRow ?? (searching ? rows[0] : null);
         if (!row) return;
         e.preventDefault();
-        play(row);
+        activate(row);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [rows, cursorRow, currentIndex, searching, play]);
+  }, [rows, cursorRow, currentIndex, searching, activate]);
 
   // Keep the pointed-at row on screen as it moves.
   useEffect(() => {
@@ -381,7 +425,31 @@ export default function PlaylistPanel({
           <div className="playlist-empty">कोई गीत नहीं मिला</div>
         )}
 
-        {nothingLocally && (
+        {/* Deliberately an offer, not a second set of results. Running it
+            costs a scrape of YouTube's results page — about a second, and
+            fragile by design — and what comes back isn't checked to be
+            embeddable the way the 95 above are, so it shouldn't crowd them
+            on every search. One row, one keystroke away. */}
+        {offeringRemote && (
+          <button
+            className={`playlist-ask${cursor === results.length ? " pointed" : ""}`}
+            ref={(node) => {
+              if (cursor === results.length) cursorRef.current = node;
+            }}
+            onClick={() => setAskedRemote(true)}
+            data-tip="हमारी सूची के बाहर, YouTube पर खोजें"
+          >
+            <SearchIcon />
+            <span className="playlist-ask-text">
+              YouTube पर <b>{query.trim()}</b> खोजें
+            </span>
+            <span className="playlist-ask-go" aria-hidden="true">
+              ↵
+            </span>
+          </button>
+        )}
+
+        {showingRemote && (
           <div className="playlist-remote">
             <div className="playlist-remote-head">
               {current.status === "loading"
