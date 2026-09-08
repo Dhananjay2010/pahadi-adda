@@ -58,8 +58,46 @@ function haystackFor(track: Track) {
   return entry;
 }
 
+/** Whether `needle` occurs in `haystack` at the start of a word. */
+function atWordStart(haystack: string, needle: string): boolean {
+  for (let from = 0; ; ) {
+    const at = haystack.indexOf(needle, from);
+    if (at === -1) return false;
+    if (at === 0 || haystack[at - 1] === " ") return true;
+    from = at + 1;
+  }
+}
+
 /**
- * The tracks matching what's been typed, in playlist order.
+ * Orders matches so the ones that begin a word come first, keeping the
+ * view-count order within each group.
+ *
+ * Searching an artist is the case this exists for. "नेगी" reaches the Latin
+ * artist names only through the skeleton pass below, where it comes down to
+ * the two consonants "ng" — and "ng" turns up inside "Rongpaz" and
+ * "Gangotri" as readily as it starts "Negi". The loose matches are worth
+ * keeping (a skeleton is a guess about spelling, and throwing away the
+ * near misses is how a search stops finding things), but they belong under
+ * the songs the person was obviously asking for, not shuffled in among
+ * them by view count.
+ */
+function rankByWordStart(
+  tracks: Track[],
+  needles: string[],
+  pick: (track: Track) => string,
+): Track[] {
+  return tracks
+    .map((track, position) => ({
+      track,
+      position,
+      starts: needles.filter((needle) => atWordStart(pick(track), needle)).length,
+    }))
+    .sort((a, b) => b.starts - a.starts || a.position - b.position)
+    .map((entry) => entry.track);
+}
+
+/**
+ * The tracks matching what's been typed, best matches first.
  *
  * Two passes. The first is a plain substring match, word by word, across
  * the Devanagari name, the Latin name (which carries the artist) and the
@@ -77,12 +115,15 @@ export function searchPlaylist(query: string): Track[] {
   const direct = PLAYLIST.filter((track) =>
     words.every((word) => haystackFor(track).plain.includes(word)),
   );
-  if (direct.length > 0) return direct;
+  if (direct.length > 0) {
+    return rankByWordStart(direct, words, (track) => haystackFor(track).plain);
+  }
 
   const skeletons = words.map(skeleton);
   // A one-consonant skeleton matches half the list; not worth offering.
   if (skeletons.some((word) => word.length < 2)) return [];
-  return PLAYLIST.filter((track) =>
+  const loose = PLAYLIST.filter((track) =>
     skeletons.every((word) => haystackFor(track).skeleton.includes(word)),
   );
+  return rankByWordStart(loose, skeletons, (track) => haystackFor(track).skeleton);
 }

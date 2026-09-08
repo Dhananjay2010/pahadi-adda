@@ -9,6 +9,17 @@ export type Track = {
 };
 
 /**
+ * Just the artist out of a track's Latin line, which is written
+ * "Title — Artist" for every entry in the list below. Used where the song
+ * name is already on screen in Devanagari and repeating it in Latin would
+ * only crowd out the name of who is singing it.
+ */
+export function artistOf(track: Track): string {
+  const dash = track.lat.indexOf(" — ");
+  return dash === -1 ? track.lat : track.lat.slice(dash + 3);
+}
+
+/**
  * Ordered by YouTube view count, most-watched first — counts read off
  * YouTube in September 2026 and stored on each track so the ordering can be
  * checked (and refreshed) later.

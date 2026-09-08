@@ -12,10 +12,13 @@ import ReactionBursts from "./ReactionBursts";
 import ChatPanel from "./ChatPanel";
 import PlaylistPanel from "./PlaylistPanel";
 import PhotoCredits from "./PhotoCredits";
+import ShortcutsPanel from "./ShortcutsPanel";
+import SeekBar from "./SeekBar";
+import StartPanel from "./StartPanel";
 import Tooltips from "./Tooltips";
 import { usePresence } from "@/hooks/usePresence";
 import { useParallax } from "@/hooks/useParallax";
-import { PLAYLIST, scheduleFromEpoch, type Track } from "@/lib/playlist";
+import { PLAYLIST, artistOf, scheduleFromEpoch, type Track } from "@/lib/playlist";
 import type { YoutubeResult } from "@/app/api/youtube-search/route";
 
 function fmt(sec: number): string {
@@ -46,19 +49,36 @@ export default function PahadiAdda() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [started, setStarted] = useState(false);
   const [clock, setClock] = useState("");
+  // Only one of these is ever open at a time (see `openOnly` below): they
+  // sit on top of each other in the same corner, and two of them at once was
+  // just two panels arguing over the same 300px.
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  // Set when the playlist is opened by the "/" shortcut rather than by a
+  // click, so the search box takes focus for someone already typing — but
+  // never on a tap, where it would throw up the on-screen keyboard over the
+  // list they just asked to see.
+  const [focusSearch, setFocusSearch] = useState(false);
+  // The last thing searched for, kept out here because the panel is
+  // unmounted when it closes and would otherwise forget it. Searching,
+  // playing something, then pressing "/" again used to hand back an empty
+  // box — for a room you are picking several songs out of, that is the
+  // same search typed twice. Deliberately not persisted: a search from
+  // yesterday is not an answer to anything.
+  const [lastQuery, setLastQuery] = useState("");
   const [volume, setVolume] = useState(85);
   const [muted, setMuted] = useState(false);
   const [shareNotice, setShareNotice] = useState(false);
   const [trackToast, setTrackToast] = useState<{ prefix: string; name: string } | null>(
     null,
   );
-  const [showHint, setShowHint] = useState(false);
   // Video mode just restyles the card — the <YouTube> element below never
   // moves in the tree, so the iframe is never torn down and playback runs
   // straight through the switch.
   const [watching, setWatching] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   // The start click is held here when it lands before the player exists.
   const [pendingStart, setPendingStart] = useState(false);
   // A song found through YouTube search, playing in place of a playlist
@@ -76,9 +96,11 @@ export default function PahadiAdda() {
   const playerRef = useRef<YouTubePlayer | null>(null);
   const durationsRef = useRef<Record<string, number>>({});
   // The order playback walks, as playlist indices. In normal mode that's
-  // just 0..n-1; shuffling replaces it with a permutation. Kept in a ref
-  // because the timers/handlers below run outside render.
-  const orderRef = useRef<number[]>(PLAYLIST.map((_, i) => i));
+  // just 0..n-1; shuffling replaces it with a permutation. Held in state
+  // because the footer renders what comes next out of it, and mirrored into
+  // a ref because the timers/handlers below run outside render.
+  const [order, setOrder] = useState<number[]>(() => PLAYLIST.map((_, i) => i));
+  const orderRef = useRef<number[]>(order);
   const shuffleRef = useRef(false);
   const startedRef = useRef(false);
   // "The listener has asked for sound" — kept separately from `started`
@@ -88,6 +110,12 @@ export default function PahadiAdda() {
   // What's actually loaded in the player — a playlist track or a guest.
   const currentVideoIdRef = useRef(PLAYLIST[initial.index].videoId);
   const diyaRef = useRef<HTMLButtonElement>(null);
+  const artRef = useRef<HTMLDivElement>(null);
+  // Mirrors `watching` for the handlers below, which need to read it without
+  // being rebuilt every time it flips.
+  const watchingRef = useRef(false);
+  // Whatever had focus when a panel was opened, so Esc can give it back.
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   // Volume/mute are mirrored into refs so a held-down arrow key compounds
   // properly: key repeat fires many times per frame, far faster than state
   // lands, and reading state there would apply the same step over and over.
@@ -138,6 +166,25 @@ export default function PahadiAdda() {
     setPendingStart(false);
     setStarted(true);
   }, []);
+
+  // The bug this guards against: `playerRef` is only set in onReady, and
+  // on a cold or slow load the start click easily lands before that. The
+  // old version optional-chained all three player calls into nothing but
+  // hid the overlay anyway — leaving a player that was still on its muted
+  // autoplay. The progress bar moved, the pause button said "playing", and
+  // there was no sound and no way back except a reload. So the ask is
+  // remembered instead, the welcome panel's button stays up saying it's
+  // connecting, and onReady finishes the job the moment there's a player
+  // to finish it on.
+  const handleStart = useCallback(() => {
+    wantsSoundRef.current = true;
+    const player = playerRef.current;
+    if (!player) {
+      setPendingStart(true);
+      return;
+    }
+    turnSoundOn(player);
+  }, [turnSoundOn]);
 
   const handleReady = useCallback((event: { target: YouTubePlayer }) => {
     playerRef.current = event.target;
@@ -258,35 +305,25 @@ export default function PahadiAdda() {
   // disagrees with the served HTML.
   useEffect(() => {
     const id = setTimeout(() => {
-      if (localStorage.getItem("pahadi-adda-watching") === "1") setWatching(true);
+      if (localStorage.getItem("pahadi-adda-watching") === "1") {
+        watchingRef.current = true;
+        setWatching(true);
+      }
       if (localStorage.getItem("pahadi-adda-shuffle") === "1") {
         shuffleRef.current = true;
         setShuffle(true);
         orderRef.current = shuffledOrder(currentIndexRef.current);
+        setOrder(orderRef.current);
       }
     }, 0);
     return () => clearTimeout(id);
   }, []);
 
-  // First-visit hint — the whole point of this site (everyone hears the
-  // same song live) is invisible unless you already know it, so say so
-  // once, then never again.
-  useEffect(() => {
-    if (localStorage.getItem("pahadi-adda-seen-hint")) return;
-    const showTimer = setTimeout(() => setShowHint(true), 1200);
-    return () => clearTimeout(showTimer);
-  }, []);
-
-  const dismissHint = useCallback(() => {
-    setShowHint(false);
-    localStorage.setItem("pahadi-adda-seen-hint", "1");
-  }, []);
-
-  useEffect(() => {
-    if (!showHint) return;
-    const t = setTimeout(dismissHint, 8000);
-    return () => clearTimeout(t);
-  }, [showHint, dismissHint]);
+  // The first-visit hint bubble that used to live up here said the one
+  // thing a newcomer needs to know ("everyone is hearing this together"),
+  // showed it for eight seconds, and then never again. StartPanel now says
+  // it properly, at the moment it matters — on the screen you have to get
+  // past to hear anything — so there is nothing left for the bubble to do.
 
   const handlePrev = useCallback(() => {
     goToTrack(neighbour(-1), 0);
@@ -323,22 +360,52 @@ export default function PahadiAdda() {
     return () => clearInterval(id);
   }, [started]);
 
+  const applyOrder = useCallback((next: number[]) => {
+    orderRef.current = next;
+    setOrder(next);
+  }, []);
+
   const handleToggleShuffle = useCallback(() => {
     const next = !shuffleRef.current;
     shuffleRef.current = next;
     setShuffle(next);
-    orderRef.current = next
-      ? shuffledOrder(currentIndexRef.current)
-      : PLAYLIST.map((_, i) => i);
+    applyOrder(next ? shuffledOrder(currentIndexRef.current) : PLAYLIST.map((_, i) => i));
     localStorage.setItem("pahadi-adda-shuffle", next ? "1" : "0");
-  }, []);
+  }, [applyOrder]);
 
   const handleToggleWatching = useCallback(() => {
-    setWatching((v) => {
-      localStorage.setItem("pahadi-adda-watching", v ? "0" : "1");
-      return !v;
-    });
+    const next = !watchingRef.current;
+    watchingRef.current = next;
+    setWatching(next);
+    localStorage.setItem("pahadi-adda-watching", next ? "1" : "0");
   }, []);
+
+  /**
+   * Fullscreen, on the player iframe itself.
+   *
+   * There is no YouTube API for this — the IFrame API exposes no fullscreen
+   * method — so it goes through the browser's own Fullscreen API. The iframe
+   * is the element handed over rather than the card around it, because the
+   * iframe already sizes itself to whatever box it is given and so needs no
+   * special stylesheet for the one state where that box is the whole screen.
+   *
+   * iPhones don't get this: iOS Safari only ever fullscreens a native
+   * <video>, and the only one here is inside YouTube's iframe where it
+   * isn't ours to ask. There `f` just opens the video view, and YouTube's
+   * own fullscreen button in the player still works.
+   */
+  const handleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      return;
+    }
+    // Coming back out should land on the big player, not on a 112px
+    // thumbnail, so the video view comes on either way.
+    if (!watchingRef.current) handleToggleWatching();
+    const frame = artRef.current?.querySelector("iframe");
+    if (!frame || !document.fullscreenEnabled) return;
+    frame.requestFullscreen().catch(() => {});
+  }, [handleToggleWatching]);
 
   /**
    * Plays something found on YouTube that isn't in the playlist. The
@@ -362,7 +429,12 @@ export default function PahadiAdda() {
     playerRef.current?.loadVideoById({ videoId: entry.videoId, startSeconds: 0 });
     playerRef.current?.playVideo();
     setPlaylistOpen(false);
-  }, []);
+    // Picking a song is as clear an ask for sound as pressing the start
+    // button, and the list is reachable before that button (the "/"
+    // shortcut opens it) — without this, the choice would load and play on
+    // the still-muted autoplay player and simply appear not to work.
+    if (!startedRef.current) handleStart();
+  }, [handleStart]);
 
   const handlePlayPause = useCallback(() => {
     if (!playerRef.current) return;
@@ -370,47 +442,34 @@ export default function PahadiAdda() {
     else playerRef.current.playVideo();
   }, [isPlaying]);
 
-  function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    const offset = pct * trackDuration;
-    playerRef.current?.seekTo(offset, true);
-    setElapsed(offset);
-  }
+  // One place the position is set from, whether that came from the slider,
+  // the ±5s buttons or the arrow keys.
+  const handleSeekTo = useCallback(
+    (seconds: number) => {
+      const player = playerRef.current;
+      if (!player) return;
+      const offset = Math.min(trackDuration, Math.max(0, seconds));
+      player.seekTo(offset, true);
+      setElapsed(offset);
+    },
+    [trackDuration],
+  );
 
   const handleSeekBy = useCallback(
     (delta: number) => {
-      if (!playerRef.current) return;
-      const current = playerRef.current.getCurrentTime?.() ?? elapsed;
-      const offset = Math.min(trackDuration, Math.max(0, current + delta));
-      playerRef.current.seekTo(offset, true);
-      setElapsed(offset);
+      const player = playerRef.current;
+      if (!player) return;
+      const current = player.getCurrentTime?.() ?? elapsed;
+      handleSeekTo(current + delta);
     },
-    [elapsed, trackDuration],
+    [elapsed, handleSeekTo],
   );
-
-  // The bug this guards against: `playerRef` is only set in onReady, and
-  // on a cold or slow load the start click easily lands before that. The
-  // old version optional-chained all three player calls into nothing but
-  // hid the overlay anyway — leaving a player that was still on its muted
-  // autoplay. The progress bar moved, the pause button said "playing", and
-  // there was no sound and no way back except a reload. So the ask is
-  // remembered instead, the overlay stays up saying it's connecting, and
-  // onReady finishes the job the moment there's a player to finish it on.
-  const handleStart = useCallback(() => {
-    wantsSoundRef.current = true;
-    const player = playerRef.current;
-    if (!player) {
-      setPendingStart(true);
-      return;
-    }
-    turnSoundOn(player);
-  }, [turnSoundOn]);
 
   function handleSelectTrack(index: number) {
     goToTrack(index, 0);
     playerRef.current?.playVideo();
     setPlaylistOpen(false);
+    if (!startedRef.current) handleStart();
   }
 
   function handleVolumeChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -449,6 +508,15 @@ export default function PahadiAdda() {
     }
   }, []);
 
+  // So the shortcut sheet and the tooltip can say which way `f` will go —
+  // and so an exit the browser triggers itself (Esc, or the player's own
+  // fullscreen button) is noticed rather than leaving the label stale.
+  useEffect(() => {
+    const sync = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
   const handleToggleMute = useCallback(() => {
     if (!playerRef.current) return;
     if (mutedRef.current) {
@@ -464,11 +532,49 @@ export default function PahadiAdda() {
     }
   }, []);
 
+  // The chat, the photo credits and the shortcut sheet are all drawn in the
+  // same top-right corner, so opening one closes the others rather than
+  // stacking three translucent panels on the same 300px of screen. The
+  // playlist lives in the dock and doesn't collide on a desktop, but it does
+  // cover the lot on a phone, so it joins the same rule.
+  const openOnly = useCallback((panel: "playlist" | "chat" | "credits" | "shortcuts" | null) => {
+    setPlaylistOpen(panel === "playlist");
+    setChatOpen(panel === "chat");
+    setCreditsOpen(panel === "credits");
+    setShortcutsOpen(panel === "shortcuts");
+    if (panel !== "playlist") setFocusSearch(false);
+
+    // Closing a panel takes its contents — including whatever had focus —
+    // out of the document, and focus falls back to <body>: a keyboard user
+    // who presses Esc loses their place and has to tab in from the top
+    // again. Hand it back to whatever opened the panel, once React has
+    // actually removed it.
+    if (panel) {
+      returnFocusRef.current ??= document.activeElement as HTMLElement | null;
+      return;
+    }
+    const opener = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
+  }, []);
+
+  const togglePanel = useCallback(
+    (panel: "playlist" | "chat" | "credits" | "shortcuts", isOpen: boolean) => {
+      openOnly(isOpen ? null : panel);
+    },
+    [openOnly],
+  );
+
+  const anyPanelOpen = playlistOpen || chatOpen || creditsOpen || shortcutsOpen;
+
   // Keyboard shortcuts — space plays/pauses (or starts, before the first
   // click), ←/→ scrub ±5s, shift+←/→ (or p/n, as on YouTube) change track,
-  // ↑/↓ set the volume, m mutes, s shuffles, v opens the video view.
+  // ↑/↓ set the volume (or walk the song list, while that is open), m
+  // mutes, s shuffles, v opens the video view, "/" searches, "?" lists all
+  // of this, Esc closes whatever is open.
   // Ignored while typing in the chat/nickname inputs so those keys behave
-  // normally there.
+  // normally there, and while a control that answers the arrow keys itself
+  // (the progress slider) has focus, which would otherwise seek twice.
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null) {
       return (
@@ -476,8 +582,42 @@ export default function PahadiAdda() {
         (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
       );
     }
+    function ownsKeys(target: EventTarget | null) {
+      return target instanceof HTMLElement && !!target.closest("[data-owns-keys]");
+    }
     function handleKeyDown(e: KeyboardEvent) {
-      if (isTypingTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Esc is the one key that has to work from inside a text field too —
+      // it is how you get back out of the search box. Except in fullscreen,
+      // where the browser is already using it to bring us back out and
+      // closing a panel at the same time would be two answers to one press.
+      if (e.key === "Escape") {
+        if (document.fullscreenElement) return;
+        if (anyPanelOpen) {
+          e.preventDefault();
+          openOnly(null);
+        }
+        return;
+      }
+      if (isTypingTarget(e.target)) return;
+      if (e.key === "/") {
+        e.preventDefault();
+        setFocusSearch(true);
+        openOnly("playlist");
+        return;
+      }
+      if (e.key === "?") {
+        e.preventDefault();
+        togglePanel("shortcuts", shortcutsOpen);
+        return;
+      }
+      if (ownsKeys(e.target) && e.key.startsWith("Arrow")) return;
+      // While the song list is open, up/down walk it instead of moving the
+      // volume — PlaylistPanel owns them. The list is only ever open
+      // because someone went looking for a song, and stepping through
+      // results is what they want the arrows for at that moment; the
+      // volume gets them back the instant the list closes.
+      if (playlistOpen && (e.key === "ArrowUp" || e.key === "ArrowDown")) return;
       if (e.code === "Space") {
         e.preventDefault();
         if (!started) handleStart();
@@ -506,6 +646,8 @@ export default function PahadiAdda() {
         handleToggleShuffle();
       } else if (e.key === "v" || e.key === "V") {
         handleToggleWatching();
+      } else if (e.key === "f" || e.key === "F") {
+        handleFullscreen();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -519,8 +661,14 @@ export default function PahadiAdda() {
     handleToggleMute,
     handleToggleShuffle,
     handleToggleWatching,
+    handleFullscreen,
     handleSeekBy,
     handleVolumeDelta,
+    anyPanelOpen,
+    openOnly,
+    togglePanel,
+    shortcutsOpen,
+    playlistOpen,
   ]);
 
   async function handleShare() {
@@ -545,7 +693,8 @@ export default function PahadiAdda() {
     }
   }
 
-  const progressPct = trackDuration ? Math.min(100, (elapsed / trackDuration) * 100) : 0;
+  // What plays after this one, so the footer can say so.
+  const upNext = PLAYLIST[order[(order.indexOf(currentIndex) + 1) % order.length]];
 
   return (
     <>
@@ -566,14 +715,6 @@ export default function PahadiAdda() {
               माहौल में <b>{onlineCount}</b> लोग
             </div>
           )}
-          {showHint && (
-            <div className="hint-bubble">
-              <span>यहाँ सब एक साथ, लाइव एक ही गीत सुन रहे हैं 🎧</span>
-              <button onClick={dismissHint} aria-label="समझ गया, बंद करें">
-                ✕
-              </button>
-            </div>
-          )}
         </div>
         <div className="topbar-actions">
           <div style={{ position: "relative" }}>
@@ -589,8 +730,17 @@ export default function PahadiAdda() {
             {shareNotice && <div className="share-toast">लिंक कॉपी हो गया</div>}
           </div>
           <button
-            className="credits-btn"
-            onClick={() => setCreditsOpen((v) => !v)}
+            className="icon-btn shortcuts-btn"
+            onClick={() => togglePanel("shortcuts", shortcutsOpen)}
+            data-tip="कीबोर्ड शॉर्टकट (?)"
+            aria-label="कीबोर्ड शॉर्टकट"
+            aria-pressed={shortcutsOpen}
+          >
+            <KeyboardIcon />
+          </button>
+          <button
+            className="icon-btn credits-btn"
+            onClick={() => togglePanel("credits", creditsOpen)}
             data-tip="फोटो किसकी हैं, देखें"
             aria-label="फोटो साभार"
             aria-pressed={creditsOpen}
@@ -625,19 +775,34 @@ export default function PahadiAdda() {
       {/* The playlist stacks directly above the player instead of opening in
           a far corner of the screen: it appears right where the button that
           opens it is, so nothing has to be chased across the viewport. */}
-      <div className={`dock${watching ? " watching" : ""}`}>
+      <div
+        className={`dock${watching ? " watching" : ""}${playlistOpen ? " listing" : ""}${
+          started ? "" : " waiting"
+        }`}
+      >
         {playlistOpen && (
           <PlaylistPanel
             currentIndex={currentIndex}
             guestVideoId={guest?.videoId ?? null}
+            autoFocusSearch={focusSearch}
+            initialQuery={lastQuery}
+            onQueryChange={setLastQuery}
             onSelect={handleSelectTrack}
             onPlayExternal={handlePlayExternal}
-            onClose={() => setPlaylistOpen(false)}
+            onClose={() => openOnly(null)}
+          />
+        )}
+        {!started && (
+          <StartPanel
+            onlineCount={onlineCount}
+            trackName={track.dev}
+            pending={pendingStart}
+            onStart={handleStart}
           />
         )}
         <div className="card">
           <div className="card-row">
-            <div className="art">
+            <div className="art" ref={artRef}>
               <YouTube
                 videoId={PLAYLIST[initial.index].videoId}
                 opts={{
@@ -673,43 +838,29 @@ export default function PahadiAdda() {
                 </button>
               )}
             </div>
+            {/* The title used to share this row with three icon buttons and
+                lost: at 430px wide the name of the song — the single thing
+                the card exists to say — was clipped to about 160px, so
+                "Gulabi Sharara — Inder Arya & Neeru" arrived as "Gulabi
+                Sharara — Inder Arya …". The buttons moved down to the
+                footer row, which had to exist anyway to carry "up next",
+                and the title got the width back. */}
             <div className="meta" key={track.videoId}>
               <div className="title-dev">{track.dev}</div>
-              <div className="title-lat">{track.lat}</div>
+              {/* The document is lang="hi"; without this the Latin line is
+                  read out with Hindi phonetics. */}
+              <div className="title-lat" lang="en">
+                {track.lat}
+              </div>
             </div>
-            <button
-              className={`openyt${watching ? " on" : ""}`}
-              onClick={handleToggleWatching}
-              data-tip={watching ? "वीडियो छोटा करें (V)" : "वीडियो भी देखें (V)"}
-              aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
-              aria-pressed={watching}
-            >
-              {watching ? <ShrinkIcon /> : <ExpandIcon />}
-            </button>
-            <button
-              className="openyt"
-              onClick={() => setPlaylistOpen((v) => !v)}
-              data-tip="पूरी सूची देखें (सब गीत)"
-              aria-label="पूरी सूची देखें"
-              aria-pressed={playlistOpen}
-            >
-              <ListIcon />
-            </button>
-            <a
-              className="openyt"
-              href={`https://www.youtube.com/watch?v=${track.videoId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-tip="यह गीत YouTube पर खोलें"
-              aria-label="YouTube पर खोलें"
-            >
-              <YtIcon />
-            </a>
           </div>
 
-          <div className="seek" onClick={handleSeek} data-tip="गीत में कहीं भी जाएं">
-            <div className="seek-fill" style={{ width: `${progressPct}%` }} />
-          </div>
+          <SeekBar
+            elapsed={elapsed}
+            duration={trackDuration}
+            onSeek={handleSeekTo}
+            disabled={!started}
+          />
           <div className="times">
             <span>{fmt(elapsed)}</span>
             <span>{fmt(trackDuration)}</span>
@@ -784,7 +935,7 @@ export default function PahadiAdda() {
               </button>
             </div>
 
-            <div className="controls-side">
+            <div className="controls-side controls-volume">
               <button
                 className="ctrl-btn mute-btn"
                 onClick={handleToggleMute}
@@ -800,26 +951,87 @@ export default function PahadiAdda() {
                 max={100}
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
+                style={{ "--filled": `${muted ? 0 : volume}%` } as React.CSSProperties}
                 data-tip="आवाज़ (↑ / ↓)"
                 aria-label="आवाज़"
               />
             </div>
           </div>
 
+          {/* The footer earns its row twice over: it says what is coming
+              next — which a station that plays 95 songs in a fixed order
+              had no way of telling anyone — and it gives the three
+              secondary actions a home away from the title, with the one
+              that matters most (the list) finally carrying a word instead
+              of three near-identical 32px glyphs. */}
+          <div className="card-foot">
+            <div className="upnext">
+              <span className="upnext-label">आगे</span>
+              <span className="upnext-name">{upNext.dev}</span>
+              {/* The artist only: the Latin line repeats the song name, and
+                  in a row this narrow that repetition is what pushes the
+                  name of the singer off the end. */}
+              <span className="upnext-lat" lang="en">
+                {artistOf(upNext)}
+              </span>
+            </div>
+            <div className="card-foot-actions">
+              <button
+                className={`foot-btn${watching ? " on" : ""}`}
+                onClick={handleToggleWatching}
+                data-tip={
+                  watching
+                    ? `वीडियो छोटा करें (V) · ${isFullscreen ? "F से बाहर आएं" : "F से पूरी स्क्रीन"}`
+                    : "वीडियो भी देखें (V) · F से पूरी स्क्रीन"
+                }
+                aria-label={watching ? "वीडियो छोटा करें" : "वीडियो भी देखें"}
+                aria-pressed={watching}
+              >
+                {watching ? <ShrinkIcon /> : <ExpandIcon />}
+              </button>
+              <a
+                className="foot-btn"
+                href={`https://www.youtube.com/watch?v=${track.videoId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-tip="यह गीत YouTube पर खोलें"
+                aria-label="YouTube पर खोलें"
+              >
+                <YtIcon />
+              </a>
+              <button
+                className={`foot-btn foot-btn-wide${playlistOpen ? " on" : ""}`}
+                onClick={() => togglePanel("playlist", playlistOpen)}
+                data-tip="सारे 95 गीत, और खोज (/)"
+                aria-label="पूरी सूची देखें"
+                aria-pressed={playlistOpen}
+              >
+                <ListIcon />
+                <span>सूची</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Not started yet: the card stays visible and readable (the
+              welcome panel above is doing the asking) but nothing in it is
+              live, and a click anywhere on it starts the sound. Blocking
+              the controls is deliberate — a "next" pressed before the
+              unmute lands changes the song silently, which is the exact
+              failure this whole start dance exists to avoid. */}
           {!started && (
             <button
-              className="start-overlay"
+              className="start-scrim"
               onClick={handleStart}
               disabled={pendingStart}
-              data-tip="चलाना शुरू करें (Space)"
-            >
-              {pendingStart ? "जुड़ रहे हैं…" : "🔊 सुनना शुरू करें"}
-            </button>
+              tabIndex={-1}
+              aria-hidden="true"
+            />
           )}
         </div>
       </div>
 
-      {creditsOpen && <PhotoCredits onClose={() => setCreditsOpen(false)} />}
+      {creditsOpen && <PhotoCredits onClose={() => openOnly(null)} />}
+      {shortcutsOpen && <ShortcutsPanel onClose={() => openOnly(null)} />}
 
       <JoinToasts events={joinEvents} onDismiss={dismissJoinEvent} />
       <ReactionBursts
@@ -827,9 +1039,25 @@ export default function PahadiAdda() {
         originRef={diyaRef}
         onDismiss={dismissReactionEvent}
       />
-      <ChatPanel />
+      <ChatPanel isOpen={chatOpen} onOpenChange={(open) => openOnly(open ? "chat" : null)} />
       <Tooltips />
+
+      {/* Everything above is either a picture or a control with no running
+          commentary, so a track change is silent to a screen reader unless
+          it is said out loud here. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {started ? `अब बज रहा है: ${track.dev}, ${track.lat}` : ""}
+      </div>
     </>
+  );
+}
+
+function KeyboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <rect x="2.2" y="6" width="19.6" height="12" rx="2.4" />
+      <path d="M6 9.6h.01M9.2 9.6h.01M12.4 9.6h.01M15.6 9.6h.01M18.4 9.6h.01M6 12.8h.01M9.2 12.8h.01M12.4 12.8h.01M15.6 12.8h.01M18.4 12.8h.01M8 15.6h8" strokeLinecap="round" />
+    </svg>
   );
 }
 

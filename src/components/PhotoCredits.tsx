@@ -4,10 +4,10 @@ import { HERO_MEDIA } from "@/lib/heroPhotos";
 
 export default function PhotoCredits({ onClose }: { onClose: () => void }) {
   return (
-    <div className="credits-panel" role="dialog" aria-label="फोटो साभार">
-      <div className="chat-header">
+    <div className="side-panel credits-panel" role="dialog" aria-label="फोटो साभार">
+      <div className="panel-header">
         <span>फोटो साभार</span>
-        <button className="chat-close" onClick={onClose} data-tip="बंद करें" aria-label="बंद करें">
+        <button className="panel-close" onClick={onClose} data-tip="बंद करें (Esc)" aria-label="बंद करें">
           ✕
         </button>
       </div>
