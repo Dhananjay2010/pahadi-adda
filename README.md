@@ -45,6 +45,17 @@ someone new joins, and can chat with whoever else is around.
   Safari only ever fullscreens a native `<video>`, and the only one here is
   inside YouTube's iframe where it isn't ours to ask — there `f` just opens
   the video view, and YouTube's own fullscreen button still works.
+- **Repeat** — the ⟳ button holds the current song: with it on, reaching the
+  end restarts the same track instead of advancing. It works on a song found
+  through YouTube search exactly as it does on one from the list, because it
+  is answered in the player's `onEnd` by restarting whatever happens to be
+  loaded, rather than through YouTube's own `loop` player var — which needs
+  a `playlist` parameter to work at all and would only ever cover the list.
+  A video that *fails* still advances: repeating one that can't be embedded
+  would sit on a dead player for ever. Like shuffle it's a personal
+  deviation from what the room is hearing, so it lives in `localStorage`,
+  and while it's on the footer reads "यही गीत, दोबारा" rather than naming a
+  track that isn't coming.
 - **Shuffle** — the ⤬ button next to the diya reshuffles the play order
   (Fisher-Yates over the whole list, with the current song pinned to the
   front so turning it on never cuts a song off). Off, tracks play in the
@@ -53,9 +64,10 @@ someone new joins, and can chat with whoever else is around.
   being shared.
 - **Keyboard** — space plays/pauses (or starts the first time), ← / →
   scrub ±5s, shift + ← / → (or `p` / `n`, as on YouTube) change track, ↑ / ↓
-  set the volume, `m` mutes, `s` shuffles, `v` opens the video view, `/`
-  opens the song list with the caret already in the search box, `?` lists
-  all of this, and Esc closes whatever panel is open.
+  set the volume, `m` mutes, `s` shuffles, `r` repeats, `v` opens the video
+  view, `f` puts it fullscreen, `/` opens the song list with the caret
+  already in the search box, `?` lists all of this, and Esc closes whatever
+  panel is open.
 
   While the song list is open, ↑ / ↓ walk it and Enter plays what they are
   pointing at (see below) — the volume gets them back the moment it closes. Every control's

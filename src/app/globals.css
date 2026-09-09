@@ -930,19 +930,31 @@ body {
 .controls-volume {
   justify-content: flex-end;
 }
+/* `flex: none` matters more than it looks: these sit in a grid column that
+   the transport can squeeze, and without it the 40px touch target set for
+   coarse pointers was being crushed to 19px wide on a phone — a target
+   sized in the stylesheet and then quietly taken away by the layout. */
 .reaction-btn,
 .mute-btn,
-.shuffle-btn {
+.shuffle-btn,
+.repeat-btn {
+  flex: none;
   width: 30px;
   height: 30px;
   font-size: 15px;
 }
-.shuffle-btn.on {
+.shuffle-btn.on,
+.repeat-btn.on {
   background: rgba(237, 169, 58, 0.22);
   color: var(--marigold);
 }
-.shuffle-btn.on:hover {
+.shuffle-btn.on:hover,
+.repeat-btn.on:hover {
   background: rgba(237, 169, 58, 0.3);
+}
+.repeat-btn svg {
+  width: 15px;
+  height: 15px;
 }
 /* Styled by hand rather than left to `accent-color`, so it matches the
    progress bar right above it instead of being the one piece of raw OS
@@ -2176,10 +2188,15 @@ body {
   }
   .reaction-btn,
   .mute-btn,
-  .shuffle-btn {
+  .shuffle-btn,
+  .repeat-btn {
     width: 40px;
     height: 40px;
     font-size: 18px;
+  }
+  .repeat-btn svg {
+    width: 19px;
+    height: 19px;
   }
   .foot-btn {
     height: 40px;
@@ -2241,11 +2258,28 @@ body {
   .volume-slider {
     display: none;
   }
+  /* Nine controls at a thumb-sized 40px do not fit across a 375px phone —
+     the transport alone wants 238px of the 313px there is. So the phone
+     gets two rows on purpose: the transport centred on its own, the
+     toggles and the mute button beneath it. This is roughly what the old
+     flex-wrap produced by accident; the difference is that every control
+     now keeps its full size instead of being squeezed to fit. */
   .controls {
-    gap: 4px;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "transport transport"
+      "toggles   volume";
+    gap: 8px 4px;
   }
   .controls-transport {
-    gap: 4px;
+    grid-area: transport;
+    gap: 8px;
+  }
+  .controls-side:not(.controls-volume) {
+    grid-area: toggles;
+  }
+  .controls-volume {
+    grid-area: volume;
   }
   .card-foot {
     gap: 8px;
