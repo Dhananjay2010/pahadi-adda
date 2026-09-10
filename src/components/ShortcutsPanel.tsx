@@ -19,6 +19,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Enter"], label: "चुना हुआ गीत चलाएं" },
   { keys: ["M"], label: "म्यूट करें" },
   { keys: ["S"], label: "शफल" },
+  { keys: ["R"], label: "यही गीत दोहराएं" },
   { keys: ["V"], label: "वीडियो देखें" },
   { keys: ["F"], label: "पूरी स्क्रीन पर वीडियो" },
   { keys: ["/"], label: "गीत खोजें" },

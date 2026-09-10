@@ -930,19 +930,31 @@ body {
 .controls-volume {
   justify-content: flex-end;
 }
+/* `flex: none` matters more than it looks: these sit in a grid column that
+   the transport can squeeze, and without it the 40px touch target set for
+   coarse pointers was being crushed to 19px wide on a phone — a target
+   sized in the stylesheet and then quietly taken away by the layout. */
 .reaction-btn,
 .mute-btn,
-.shuffle-btn {
+.shuffle-btn,
+.repeat-btn {
+  flex: none;
   width: 30px;
   height: 30px;
   font-size: 15px;
 }
-.shuffle-btn.on {
+.shuffle-btn.on,
+.repeat-btn.on {
   background: rgba(237, 169, 58, 0.22);
   color: var(--marigold);
 }
-.shuffle-btn.on:hover {
+.shuffle-btn.on:hover,
+.repeat-btn.on:hover {
   background: rgba(237, 169, 58, 0.3);
+}
+.repeat-btn svg {
+  width: 15px;
+  height: 15px;
 }
 /* Styled by hand rather than left to `accent-color`, so it matches the
    progress bar right above it instead of being the one piece of raw OS
@@ -2176,10 +2188,15 @@ body {
   }
   .reaction-btn,
   .mute-btn,
-  .shuffle-btn {
+  .shuffle-btn,
+  .repeat-btn {
     width: 40px;
     height: 40px;
     font-size: 18px;
+  }
+  .repeat-btn svg {
+    width: 19px;
+    height: 19px;
   }
   .foot-btn {
     height: 40px;
@@ -2225,7 +2242,7 @@ body {
   .dock.listing,
   .dock.watching,
   .dock.watching.listing {
-    width: 92vw;
+    width: 95vw;
   }
   /* One card width on a phone means the title has the whole row: the art
      shrinks a little, and the volume slider goes entirely — the hardware
@@ -2241,11 +2258,74 @@ body {
   .volume-slider {
     display: none;
   }
+  /* A 375px phone gives the control row 313px, and the five-button
+     transport alone wanted 238px of it — which is why the two side buttons
+     were being crushed to 19px wide long before repeat was added.
+
+     All seven controls do fit on one line, but only by paying for it in
+     millimetres: the card takes a little more of the screen's width and a
+     little less padding, the gaps tighten, and every button gives up a few
+     pixels — the ±5s pair most of all, since they are the least-reached
+     controls in the row and are already the small ones on desktop. These
+     sizes are set here rather than in the coarse-pointer block above so
+     that tablets, which have room to spare, keep the full targets. */
+  .card {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .ctrl-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .play-btn {
+    width: 52px;
+    height: 52px;
+  }
+  .seek-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .seek-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .shuffle-btn,
+  .repeat-btn {
+    width: 38px;
+    height: 38px;
+  }
+  /* Mute goes too: a phone has hardware volume keys for that, and the
+     slider beside it is already hidden here. Repeat takes the vacated spot
+     on the right, which leaves exactly one toggle either side of the
+     transport.
+     That symmetry is the whole point. The row used to be `1fr auto 1fr`,
+     which gives both sides equal width — fine until the left held two
+     buttons (84px) against the right's one (40px), at which point the pair
+     was drawn at half what it asked for. That is the same mechanism that
+     had the old diya and shuffle rendering 19px wide against a 40px rule.
+     With one button each side the weights finally match, so `space-between`
+     puts the play button dead centre with nothing squeezed — and it holds
+     down to a 320px screen. `display: contents` dissolves the two side
+     wrappers so their buttons become direct children of the row; `order`
+     is what carries repeat across to the right without moving it in the
+     markup, where it belongs next to shuffle. */
+  .mute-btn {
+    display: none;
+  }
   .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 4px;
   }
+  .controls-side {
+    display: contents;
+  }
   .controls-transport {
-    gap: 4px;
+    gap: 6px;
+  }
+  .repeat-btn {
+    order: 1;
   }
   .card-foot {
     gap: 8px;
@@ -2288,6 +2368,16 @@ body {
 
 /* The chat button moves up under the topbar wherever the dock is wide
    enough to reach it — the bottom edge is then the card's alone. */
+/* Below about 360px — the small phones of a decade ago — seven controls
+   stop fitting however tight the gaps get, so the ±5s pair is the first
+   thing to go again. Five fit there comfortably, and dragging the seek bar
+   still covers the job. */
+@media (max-width: 359px) {
+  .seek-btn {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) {
   .chat-fab {
     top: calc(max(22px, env(safe-area-inset-top, 0px)) + 44px);

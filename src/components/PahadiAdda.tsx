@@ -86,6 +86,7 @@ export default function PahadiAdda() {
   // the room picks up exactly where it left off.
   const [guest, setGuest] = useState<Track | null>(null);
   const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState(false);
   // Real (player-reported) durations, once known, in place of the shipped
   // estimates — kept in state so the render below can read it safely, and
   // mirrored into a ref so the timers/callbacks further down (which run
@@ -102,6 +103,9 @@ export default function PahadiAdda() {
   const [order, setOrder] = useState<number[]>(() => PLAYLIST.map((_, i) => i));
   const orderRef = useRef<number[]>(order);
   const shuffleRef = useRef(false);
+  // Read by handleEnd, which fires from the player rather than from a
+  // render, so it needs the current value and not a closed-over one.
+  const repeatRef = useRef(false);
   const startedRef = useRef(false);
   // "The listener has asked for sound" — kept separately from `started`
   // because the ask can arrive before there's a player to act on it.
@@ -219,6 +223,16 @@ export default function PahadiAdda() {
   // single broken video skips itself instead of leaving every listener
   // stuck on a dead player until the schedule's next scheduled advance.
   const handleEnd = useCallback(() => {
+    // Repeat is answered here rather than with YouTube's own `loop` player
+    // var, which needs a `playlist` parameter to work at all and wouldn't
+    // cover a song playing from a search. Restarting whatever is loaded
+    // doesn't care which of the two it is.
+    if (repeatRef.current) {
+      playerRef.current?.seekTo(0, true);
+      playerRef.current?.playVideo();
+      setElapsed(0);
+      return;
+    }
     const next = neighbour(1);
     goToTrack(next, 0);
     // Only on auto-advance, not on a manual prev/next/select — if you
@@ -230,6 +244,9 @@ export default function PahadiAdda() {
   // moment it loads. For a playlist track that's a silent skip, as before;
   // for something picked out of the search results it needs saying, or the
   // click just looks broken.
+  // Deliberately ignores repeat: a video that can't be embedded fails the
+  // instant it loads, so repeating it would sit on the same dead player for
+  // ever instead of moving on.
   const handlePlayerError = useCallback(() => {
     const wasGuest = guestRef.current !== null;
     const next = neighbour(1);
@@ -309,6 +326,10 @@ export default function PahadiAdda() {
         watchingRef.current = true;
         setWatching(true);
       }
+      if (localStorage.getItem("pahadi-adda-repeat") === "1") {
+        repeatRef.current = true;
+        setRepeat(true);
+      }
       if (localStorage.getItem("pahadi-adda-shuffle") === "1") {
         shuffleRef.current = true;
         setShuffle(true);
@@ -372,6 +393,15 @@ export default function PahadiAdda() {
     applyOrder(next ? shuffledOrder(currentIndexRef.current) : PLAYLIST.map((_, i) => i));
     localStorage.setItem("pahadi-adda-shuffle", next ? "1" : "0");
   }, [applyOrder]);
+
+  // Like shuffle, this is a personal deviation from what the room is
+  // hearing rather than something shared, so it lives in localStorage.
+  const handleToggleRepeat = useCallback(() => {
+    const next = !repeatRef.current;
+    repeatRef.current = next;
+    setRepeat(next);
+    localStorage.setItem("pahadi-adda-repeat", next ? "1" : "0");
+  }, []);
 
   const handleToggleWatching = useCallback(() => {
     const next = !watchingRef.current;
@@ -644,6 +674,8 @@ export default function PahadiAdda() {
         handleToggleMute();
       } else if (e.key === "s" || e.key === "S") {
         handleToggleShuffle();
+      } else if (e.key === "r" || e.key === "R") {
+        handleToggleRepeat();
       } else if (e.key === "v" || e.key === "V") {
         handleToggleWatching();
       } else if (e.key === "f" || e.key === "F") {
@@ -660,6 +692,7 @@ export default function PahadiAdda() {
     handlePrev,
     handleToggleMute,
     handleToggleShuffle,
+    handleToggleRepeat,
     handleToggleWatching,
     handleFullscreen,
     handleSeekBy,
@@ -867,16 +900,12 @@ export default function PahadiAdda() {
           </div>
 
           <div className="controls">
+            {/* Playback modes only. The diya moved to the footer with the
+                other non-transport actions — it broadcasts a reaction to
+                everyone in the room, which is a social thing sitting in a
+                row of playback controls, and its slot is what let shuffle
+                and repeat both fit on one line on a phone. */}
             <div className="controls-side">
-              <button
-                ref={diyaRef}
-                className="ctrl-btn reaction-btn"
-                onClick={() => sendReaction("🪔")}
-                data-tip="सबके लिए दिया जलाएं"
-                aria-label="दिया जलाएं"
-              >
-                🪔
-              </button>
               <button
                 className={`ctrl-btn shuffle-btn${shuffle ? " on" : ""}`}
                 onClick={handleToggleShuffle}
@@ -885,6 +914,19 @@ export default function PahadiAdda() {
                 aria-pressed={shuffle}
               >
                 <ShuffleIcon />
+              </button>
+              <button
+                className={`ctrl-btn repeat-btn${repeat ? " on" : ""}`}
+                onClick={handleToggleRepeat}
+                data-tip={
+                  repeat
+                    ? "दोहराना बंद करें — अगला गीत चलेगा (R)"
+                    : "यही गीत दोहराते रहें (R)"
+                }
+                aria-label={repeat ? "दोहराना बंद करें" : "यही गीत दोहराएं"}
+                aria-pressed={repeat}
+              >
+                <RepeatIcon />
               </button>
             </div>
 
@@ -965,17 +1007,35 @@ export default function PahadiAdda() {
               that matters most (the list) finally carrying a word instead
               of three near-identical 32px glyphs. */}
           <div className="card-foot">
-            <div className="upnext">
-              <span className="upnext-label">आगे</span>
-              <span className="upnext-name">{upNext.dev}</span>
-              {/* The artist only: the Latin line repeats the song name, and
-                  in a row this narrow that repetition is what pushes the
-                  name of the singer off the end. */}
-              <span className="upnext-lat" lang="en">
-                {artistOf(upNext)}
-              </span>
-            </div>
+            {/* With repeat on, "next" is this song again — so the row says
+                that rather than naming a track that isn't coming. */}
+            {repeat ? (
+              <div className="upnext">
+                <span className="upnext-label">आगे</span>
+                <span className="upnext-name">यही गीत, दोबारा</span>
+              </div>
+            ) : (
+              <div className="upnext">
+                <span className="upnext-label">आगे</span>
+                <span className="upnext-name">{upNext.dev}</span>
+                {/* The artist only: the Latin line repeats the song name,
+                    and in a row this narrow that repetition is what pushes
+                    the name of the singer off the end. */}
+                <span className="upnext-lat" lang="en">
+                  {artistOf(upNext)}
+                </span>
+              </div>
+            )}
             <div className="card-foot-actions">
+              <button
+                ref={diyaRef}
+                className="foot-btn foot-diya"
+                onClick={() => sendReaction("🪔")}
+                data-tip="सबके लिए दिया जलाएं"
+                aria-label="दिया जलाएं"
+              >
+                🪔
+              </button>
               <button
                 className={`foot-btn${watching ? " on" : ""}`}
                 onClick={handleToggleWatching}
@@ -1103,6 +1163,17 @@ function SeekForwardIcon() {
       >
         5
       </text>
+    </svg>
+  );
+}
+
+function RepeatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M17 2.5 20.5 6 17 9.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20.5 6H7a3.5 3.5 0 0 0-3.5 3.5V11" strokeLinecap="round" />
+      <path d="M7 21.5 3.5 18 7 14.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.5 18H17a3.5 3.5 0 0 0 3.5-3.5V13" strokeLinecap="round" />
     </svg>
   );
 }

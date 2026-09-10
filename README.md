@@ -45,17 +45,63 @@ someone new joins, and can chat with whoever else is around.
   Safari only ever fullscreens a native `<video>`, and the only one here is
   inside YouTube's iframe where it isn't ours to ask — there `f` just opens
   the video view, and YouTube's own fullscreen button still works.
-- **Shuffle** — the ⤬ button next to the diya reshuffles the play order
+- **The control row on a phone** — a 375px screen gives the row 313px, and a
+  five-button transport alone wants 238px of that. The layout was `1fr auto
+  1fr`, which hands both sides the same width — fine until the left held
+  more buttons than the right, at which point the heavier side was drawn at
+  half what it asked for: measured, the 40px touch target this stylesheet
+  sets was rendering **19px wide**.
+
+  Two controls leave the row below 480px. The diya moves to the card footer
+  (it broadcasts a reaction to the room, so it was the one social control
+  sitting in a row of playback ones), and mute goes entirely, because the
+  hardware volume keys do that job and the slider beside it was already
+  hidden here. What remains is `⤬ | ⏮ ⟲5 ▶ ⟳5 ⏭ | ⟳` — one toggle either
+  side of the transport, and that symmetry is the point: equal weights mean
+  the play button lands dead centre with nothing squeezed.
+
+  The ±5s pair only fits because the row pays for it in millimetres. The
+  card takes 95vw instead of 92 and drops to 10px of side padding, the
+  transport gap tightens to 6px, and every button gives up a few pixels —
+  38px for the toggles, 42 for prev/next, 52 for play, and 34 for the ±5s
+  pair, which loses most because they are the least-reached controls here
+  and are already the small ones on desktop. Those sizes live in the 480px
+  block rather than the coarse-pointer one above it, so tablets keep the
+  full targets. Measured across phone widths, it holds with the play button
+  at exactly 0px off centre from 430px down to 360px; below 360 — the small
+  phones of a decade ago — the ±5s pair drops out again and the remaining
+  five fit comfortably down to 320px.
+
+  `display: contents` dissolves the two side wrappers so their buttons
+  become direct children of the row, and `order` carries repeat across to
+  the right without moving it in the markup, where it belongs beside
+  shuffle. Desktop is untouched — nine controls including mute and the
+  volume slider, one row, play button dead centre there too.
+- **Repeat** — the ⟳ button holds the current song: with it on, reaching the
+  end restarts the same track instead of advancing. It works on a song found
+  through YouTube search exactly as it does on one from the list, because it
+  is answered in the player's `onEnd` by restarting whatever happens to be
+  loaded, rather than through YouTube's own `loop` player var — which needs
+  a `playlist` parameter to work at all and would only ever cover the list.
+  A video that *fails* still advances: repeating one that can't be embedded
+  would sit on a dead player for ever. Like shuffle it's a personal
+  deviation from what the room is hearing, so it lives in `localStorage`,
+  and while it's on the footer reads "यही गीत, दोबारा" rather than naming a
+  track that isn't coming.
+- **Shuffle** — the ⤬ button beside repeat reshuffles the play order
   (Fisher-Yates over the whole list, with the current song pinned to the
   front so turning it on never cuts a song off). Off, tracks play in the
   view-count order above. Like skipping, it's a personal deviation from
   what everyone else is hearing, so it lives in `localStorage` rather than
   being shared.
 - **Keyboard** — space plays/pauses (or starts the first time), ← / →
-  scrub ±5s, shift + ← / → (or `p` / `n`, as on YouTube) change track, ↑ / ↓
-  set the volume, `m` mutes, `s` shuffles, `v` opens the video view, `/`
-  opens the song list with the caret already in the search box, `?` lists
-  all of this, and Esc closes whatever panel is open.
+  scrub ±5s (the keys work everywhere; the two ±5s *buttons* are desktop
+  only — see below), shift + ← / → (or `p` / `n`, as on YouTube) change
+  track, ↑ / ↓
+  set the volume, `m` mutes, `s` shuffles, `r` repeats, `v` opens the video
+  view, `f` puts it fullscreen, `/` opens the song list with the caret
+  already in the search box, `?` lists all of this, and Esc closes whatever
+  panel is open.
 
   While the song list is open, ↑ / ↓ walk it and Enter plays what they are
   pointing at (see below) — the volume gets them back the moment it closes. Every control's
@@ -139,7 +185,7 @@ someone new joins, and can chat with whoever else is around.
   what you send in a chat message; it's otherwise read per-request. Locally
   (or off Vercel) this returns nothing and falls back to a generic
   "पहाड़ों से".
-- **Reactions** — a 🪔 button next to the transport controls broadcasts a
+- **Reactions** — a 🪔 button in the card's footer broadcasts a
   floating diya to everyone currently on the site via Supabase Realtime
   Broadcast (`src/hooks/usePresence.ts`, `src/components/ReactionBursts.tsx`).
   Each one rises out of the diya button itself and is drawn above the
