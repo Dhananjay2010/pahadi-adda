@@ -2258,28 +2258,34 @@ body {
   .volume-slider {
     display: none;
   }
-  /* Nine controls at a thumb-sized 40px do not fit across a 375px phone —
-     the transport alone wants 238px of the 313px there is. So the phone
-     gets two rows on purpose: the transport centred on its own, the
-     toggles and the mute button beneath it. This is roughly what the old
-     flex-wrap produced by accident; the difference is that every control
-     now keeps its full size instead of being squeezed to fit. */
+  /* A 375px phone gives the control row 313px, and the five-button
+     transport alone wanted 238px of it — which is why the two side buttons
+     were being crushed to 19px wide long before repeat was added. Skipping
+     five seconds is the part that survives losing its button: the seek bar
+     has a 20px hit area and a thumb that stays visible on touch, so it is
+     genuinely draggable, which is how phones scrub anyway. Without those
+     two the row is prev/play/next plus three toggles, and fits on one line
+     at full size. The arrow keys and the desktop buttons are untouched. */
+  .seek-btn {
+    display: none;
+  }
+  /* And the row stops trying to be centred. `1fr auto 1fr` gives both sides
+     the same width, but the two toggles on the left need 84px where the
+     lone mute button on the right needs 40 — so the pair got half of what
+     it asked for and was drawn crushed. (That is the same mechanism that
+     had the old diya and shuffle rendering 19px wide.) `display: contents`
+     dissolves the three cluster wrappers so all six controls become direct
+     children of one evenly spaced strip: nothing is squeezed, and it still
+     holds on a 320px screen, which no amount of tuning the column widths
+     managed. */
   .controls {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "transport transport"
-      "toggles   volume";
-    gap: 8px 4px;
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
   }
+  .controls-side,
   .controls-transport {
-    grid-area: transport;
-    gap: 8px;
-  }
-  .controls-side:not(.controls-volume) {
-    grid-area: toggles;
-  }
-  .controls-volume {
-    grid-area: volume;
+    display: contents;
   }
   .card-foot {
     gap: 8px;

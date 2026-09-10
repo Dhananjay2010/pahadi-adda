@@ -900,16 +900,12 @@ export default function PahadiAdda() {
           </div>
 
           <div className="controls">
+            {/* Playback modes only. The diya moved to the footer with the
+                other non-transport actions — it broadcasts a reaction to
+                everyone in the room, which is a social thing sitting in a
+                row of playback controls, and its slot is what let shuffle
+                and repeat both fit on one line on a phone. */}
             <div className="controls-side">
-              <button
-                ref={diyaRef}
-                className="ctrl-btn reaction-btn"
-                onClick={() => sendReaction("🪔")}
-                data-tip="सबके लिए दिया जलाएं"
-                aria-label="दिया जलाएं"
-              >
-                🪔
-              </button>
               <button
                 className={`ctrl-btn shuffle-btn${shuffle ? " on" : ""}`}
                 onClick={handleToggleShuffle}
@@ -1031,6 +1027,15 @@ export default function PahadiAdda() {
               </div>
             )}
             <div className="card-foot-actions">
+              <button
+                ref={diyaRef}
+                className="foot-btn foot-diya"
+                onClick={() => sendReaction("🪔")}
+                data-tip="सबके लिए दिया जलाएं"
+                aria-label="दिया जलाएं"
+              >
+                🪔
+              </button>
               <button
                 className={`foot-btn${watching ? " on" : ""}`}
                 onClick={handleToggleWatching}

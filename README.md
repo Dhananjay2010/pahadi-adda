@@ -45,6 +45,19 @@ someone new joins, and can chat with whoever else is around.
   Safari only ever fullscreens a native `<video>`, and the only one here is
   inside YouTube's iframe where it isn't ours to ask — there `f` just opens
   the video view, and YouTube's own fullscreen button still works.
+- **The control row on a phone** — a 375px screen gives the row 313px, and a
+  five-button transport alone wants 238px of that. The layout was `1fr auto
+  1fr`, which hands both sides the same width — but the toggles on the left
+  need 84px where the lone mute button on the right needs 40, so the pair
+  was drawn at half what it asked for: measured, the 40px touch target this
+  stylesheet sets was rendering **19px wide**. Two changes fix it. The ±5s
+  *buttons* drop out below 480px (the keys and the desktop buttons stay, and
+  the seek bar has a 20px hit area with a thumb that stays visible on touch,
+  which is how phones scrub anyway), and the three cluster wrappers are
+  dissolved with `display: contents` so the six remaining controls become one
+  evenly spaced strip. Nothing is squeezed, it holds down to a 320px screen,
+  and the card is 48px shorter than the two-row version it replaced. Desktop
+  is untouched — nine controls, one row, play button dead centre.
 - **Repeat** — the ⟳ button holds the current song: with it on, reaching the
   end restarts the same track instead of advancing. It works on a song found
   through YouTube search exactly as it does on one from the list, because it
@@ -56,14 +69,16 @@ someone new joins, and can chat with whoever else is around.
   deviation from what the room is hearing, so it lives in `localStorage`,
   and while it's on the footer reads "यही गीत, दोबारा" rather than naming a
   track that isn't coming.
-- **Shuffle** — the ⤬ button next to the diya reshuffles the play order
+- **Shuffle** — the ⤬ button beside repeat reshuffles the play order
   (Fisher-Yates over the whole list, with the current song pinned to the
   front so turning it on never cuts a song off). Off, tracks play in the
   view-count order above. Like skipping, it's a personal deviation from
   what everyone else is hearing, so it lives in `localStorage` rather than
   being shared.
 - **Keyboard** — space plays/pauses (or starts the first time), ← / →
-  scrub ±5s, shift + ← / → (or `p` / `n`, as on YouTube) change track, ↑ / ↓
+  scrub ±5s (the keys work everywhere; the two ±5s *buttons* are desktop
+  only — see below), shift + ← / → (or `p` / `n`, as on YouTube) change
+  track, ↑ / ↓
   set the volume, `m` mutes, `s` shuffles, `r` repeats, `v` opens the video
   view, `f` puts it fullscreen, `/` opens the song list with the caret
   already in the search box, `?` lists all of this, and Esc closes whatever
@@ -151,7 +166,7 @@ someone new joins, and can chat with whoever else is around.
   what you send in a chat message; it's otherwise read per-request. Locally
   (or off Vercel) this returns nothing and falls back to a generic
   "पहाड़ों से".
-- **Reactions** — a 🪔 button next to the transport controls broadcasts a
+- **Reactions** — a 🪔 button in the card's footer broadcasts a
   floating diya to everyone currently on the site via Supabase Realtime
   Broadcast (`src/hooks/usePresence.ts`, `src/components/ReactionBursts.tsx`).
   Each one rises out of the diya button itself and is drawn above the
