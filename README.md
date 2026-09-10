@@ -47,17 +47,27 @@ someone new joins, and can chat with whoever else is around.
   the video view, and YouTube's own fullscreen button still works.
 - **The control row on a phone** — a 375px screen gives the row 313px, and a
   five-button transport alone wants 238px of that. The layout was `1fr auto
-  1fr`, which hands both sides the same width — but the toggles on the left
-  need 84px where the lone mute button on the right needs 40, so the pair
-  was drawn at half what it asked for: measured, the 40px touch target this
-  stylesheet sets was rendering **19px wide**. Two changes fix it. The ±5s
-  *buttons* drop out below 480px (the keys and the desktop buttons stay, and
-  the seek bar has a 20px hit area with a thumb that stays visible on touch,
-  which is how phones scrub anyway), and the three cluster wrappers are
-  dissolved with `display: contents` so the six remaining controls become one
-  evenly spaced strip. Nothing is squeezed, it holds down to a 320px screen,
-  and the card is 48px shorter than the two-row version it replaced. Desktop
-  is untouched — nine controls, one row, play button dead centre.
+  1fr`, which hands both sides the same width — fine until the left held
+  more buttons than the right, at which point the heavier side was drawn at
+  half what it asked for: measured, the 40px touch target this stylesheet
+  sets was rendering **19px wide**.
+
+  Below 480px the row is therefore cut to five controls — `⤬ | ⏮ ▶ ⏭ | ⟳` —
+  by dropping three things a phone can spare. The diya moves to the card
+  footer (it broadcasts a reaction to the room, so it was the one social
+  control sitting in a row of playback ones). The ±5s *buttons* go, since
+  the seek bar has a 20px hit area and a thumb that stays visible on touch,
+  which is how phones scrub anyway. And mute goes, because the hardware
+  volume keys do that job and the slider beside it was already hidden here.
+
+  What's left is one toggle either side of the transport, and that symmetry
+  is the point: equal weights mean the play button lands dead centre with
+  nothing squeezed, at 375px and still at 320px. `display: contents`
+  dissolves the two side wrappers so their buttons become direct children of
+  the row, and `order` carries repeat across to the right without moving it
+  in the markup, where it belongs beside shuffle. The card ends up 48px
+  shorter than the two-row version this replaced. Desktop is untouched —
+  nine controls, one row, play button dead centre there too.
 - **Repeat** — the ⟳ button holds the current song: with it on, reaching the
   end restarts the same track instead of advancing. It works on a song found
   through YouTube search exactly as it does on one from the list, because it

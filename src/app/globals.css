@@ -2269,23 +2269,38 @@ body {
   .seek-btn {
     display: none;
   }
-  /* And the row stops trying to be centred. `1fr auto 1fr` gives both sides
-     the same width, but the two toggles on the left need 84px where the
-     lone mute button on the right needs 40 — so the pair got half of what
-     it asked for and was drawn crushed. (That is the same mechanism that
-     had the old diya and shuffle rendering 19px wide.) `display: contents`
-     dissolves the three cluster wrappers so all six controls become direct
-     children of one evenly spaced strip: nothing is squeezed, and it still
-     holds on a 320px screen, which no amount of tuning the column widths
-     managed. */
+  /* Mute goes too: a phone has hardware volume keys for that, and the
+     slider beside it is already hidden here. Repeat takes the vacated spot
+     on the right, which leaves exactly one toggle either side of the
+     transport.
+     That symmetry is the whole point. The row used to be `1fr auto 1fr`,
+     which gives both sides equal width — fine until the left held two
+     buttons (84px) against the right's one (40px), at which point the pair
+     was drawn at half what it asked for. That is the same mechanism that
+     had the old diya and shuffle rendering 19px wide against a 40px rule.
+     With one button each side the weights finally match, so `space-between`
+     puts the play button dead centre with nothing squeezed — and it holds
+     down to a 320px screen. `display: contents` dissolves the two side
+     wrappers so their buttons become direct children of the row; `order`
+     is what carries repeat across to the right without moving it in the
+     markup, where it belongs next to shuffle. */
+  .mute-btn {
+    display: none;
+  }
   .controls {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: 4px;
   }
-  .controls-side,
-  .controls-transport {
+  .controls-side {
     display: contents;
+  }
+  .controls-transport {
+    gap: 8px;
+  }
+  .repeat-btn {
+    order: 1;
   }
   .card-foot {
     gap: 8px;
