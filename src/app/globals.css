@@ -2242,7 +2242,7 @@ body {
   .dock.listing,
   .dock.watching,
   .dock.watching.listing {
-    width: 92vw;
+    width: 95vw;
   }
   /* One card width on a phone means the title has the whole row: the art
      shrinks a little, and the volume slider goes entirely — the hardware
@@ -2260,14 +2260,39 @@ body {
   }
   /* A 375px phone gives the control row 313px, and the five-button
      transport alone wanted 238px of it — which is why the two side buttons
-     were being crushed to 19px wide long before repeat was added. Skipping
-     five seconds is the part that survives losing its button: the seek bar
-     has a 20px hit area and a thumb that stays visible on touch, so it is
-     genuinely draggable, which is how phones scrub anyway. Without those
-     two the row is prev/play/next plus three toggles, and fits on one line
-     at full size. The arrow keys and the desktop buttons are untouched. */
+     were being crushed to 19px wide long before repeat was added.
+
+     All seven controls do fit on one line, but only by paying for it in
+     millimetres: the card takes a little more of the screen's width and a
+     little less padding, the gaps tighten, and every button gives up a few
+     pixels — the ±5s pair most of all, since they are the least-reached
+     controls in the row and are already the small ones on desktop. These
+     sizes are set here rather than in the coarse-pointer block above so
+     that tablets, which have room to spare, keep the full targets. */
+  .card {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .ctrl-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .play-btn {
+    width: 52px;
+    height: 52px;
+  }
   .seek-btn {
-    display: none;
+    width: 34px;
+    height: 34px;
+  }
+  .seek-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .shuffle-btn,
+  .repeat-btn {
+    width: 38px;
+    height: 38px;
   }
   /* Mute goes too: a phone has hardware volume keys for that, and the
      slider beside it is already hidden here. Repeat takes the vacated spot
@@ -2297,7 +2322,7 @@ body {
     display: contents;
   }
   .controls-transport {
-    gap: 8px;
+    gap: 6px;
   }
   .repeat-btn {
     order: 1;
@@ -2343,6 +2368,16 @@ body {
 
 /* The chat button moves up under the topbar wherever the dock is wide
    enough to reach it — the bottom edge is then the card's alone. */
+/* Below about 360px — the small phones of a decade ago — seven controls
+   stop fitting however tight the gaps get, so the ±5s pair is the first
+   thing to go again. Five fit there comfortably, and dragging the seek bar
+   still covers the job. */
+@media (max-width: 359px) {
+  .seek-btn {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) {
   .chat-fab {
     top: calc(max(22px, env(safe-area-inset-top, 0px)) + 44px);

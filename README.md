@@ -52,22 +52,31 @@ someone new joins, and can chat with whoever else is around.
   half what it asked for: measured, the 40px touch target this stylesheet
   sets was rendering **19px wide**.
 
-  Below 480px the row is therefore cut to five controls — `⤬ | ⏮ ▶ ⏭ | ⟳` —
-  by dropping three things a phone can spare. The diya moves to the card
-  footer (it broadcasts a reaction to the room, so it was the one social
-  control sitting in a row of playback ones). The ±5s *buttons* go, since
-  the seek bar has a 20px hit area and a thumb that stays visible on touch,
-  which is how phones scrub anyway. And mute goes, because the hardware
-  volume keys do that job and the slider beside it was already hidden here.
+  Two controls leave the row below 480px. The diya moves to the card footer
+  (it broadcasts a reaction to the room, so it was the one social control
+  sitting in a row of playback ones), and mute goes entirely, because the
+  hardware volume keys do that job and the slider beside it was already
+  hidden here. What remains is `⤬ | ⏮ ⟲5 ▶ ⟳5 ⏭ | ⟳` — one toggle either
+  side of the transport, and that symmetry is the point: equal weights mean
+  the play button lands dead centre with nothing squeezed.
 
-  What's left is one toggle either side of the transport, and that symmetry
-  is the point: equal weights mean the play button lands dead centre with
-  nothing squeezed, at 375px and still at 320px. `display: contents`
-  dissolves the two side wrappers so their buttons become direct children of
-  the row, and `order` carries repeat across to the right without moving it
-  in the markup, where it belongs beside shuffle. The card ends up 48px
-  shorter than the two-row version this replaced. Desktop is untouched —
-  nine controls, one row, play button dead centre there too.
+  The ±5s pair only fits because the row pays for it in millimetres. The
+  card takes 95vw instead of 92 and drops to 10px of side padding, the
+  transport gap tightens to 6px, and every button gives up a few pixels —
+  38px for the toggles, 42 for prev/next, 52 for play, and 34 for the ±5s
+  pair, which loses most because they are the least-reached controls here
+  and are already the small ones on desktop. Those sizes live in the 480px
+  block rather than the coarse-pointer one above it, so tablets keep the
+  full targets. Measured across phone widths, it holds with the play button
+  at exactly 0px off centre from 430px down to 360px; below 360 — the small
+  phones of a decade ago — the ±5s pair drops out again and the remaining
+  five fit comfortably down to 320px.
+
+  `display: contents` dissolves the two side wrappers so their buttons
+  become direct children of the row, and `order` carries repeat across to
+  the right without moving it in the markup, where it belongs beside
+  shuffle. Desktop is untouched — nine controls including mute and the
+  volume slider, one row, play button dead centre there too.
 - **Repeat** — the ⟳ button holds the current song: with it on, reaching the
   end restarts the same track instead of advancing. It works on a song found
   through YouTube search exactly as it does on one from the list, because it
