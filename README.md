@@ -144,6 +144,20 @@ someone new joins, and can chat with whoever else is around.
   starfield (from `src/lib/timePalette.ts`, interpolated continuously via
   `src/hooks/useTimeOfDay.ts`) tie the differently-lit photos into one
   believable day, and a fixed vignette keeps the topbar/card text legible.
+
+  Only the layer on screen and the one after it are *animated*, too. Every
+  layer that had loaded used to keep running its Ken Burns scale for ever,
+  so about a hundred seconds into a listen the device was compositing twelve
+  full-screen animated layers to show one — the cost climbing as the
+  slideshow primed more of them, which is what "it warms up after a while"
+  feels like in the hand. The other ten are paused rather than stripped of
+  the animation, so each resumes from where it stopped and is still mid-pan
+  when its turn comes round. Phones additionally swap the three video
+  backgrounds for their poster stills: a second 1280x720 decode running as
+  wallpaper, beside the one YouTube is already doing for the song, is the
+  most expensive thing on the page and the least looked at. And nothing
+  advances or decodes while the page is hidden — someone listening with the
+  screen locked was paying for a background they could not see.
 - **Starting playback** — browsers only allow autoplay while muted, so the
   player begins muted and the "सुनना शुरू करें" click is what turns the
   sound on. Since *every* visitor has to get past that click, it is the

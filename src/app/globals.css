@@ -143,11 +143,23 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
-  /* Runs continuously regardless of which layer is active — a fixed loop
+  /* Runs continuously rather than restarting per photo — a fixed loop
      length would need to restart in sync with the crossfade, but a photo
      simply being mid-breath the moment it fades in reads just as alive and
      needs no coordination with the HOLD_MS timer in PhotoHero.tsx. */
   animation: kenburns 46s ease-in-out infinite alternate;
+}
+/* ...but only for the layer on screen and the one coming next. Every layer
+   that had loaded used to keep scaling for ever, so after about a hundred
+   seconds of listening the device was compositing twelve full-screen
+   animated layers to show one — the cost climbing as the slideshow primed
+   more of them, which is exactly what "it heats up after a while" feels
+   like. The other ten hold still; because the animation is paused rather
+   than removed, each resumes from where it stopped and is still mid-pan
+   when its turn comes round. */
+.photo-layer:not(.active):not(.warming) img,
+.photo-layer:not(.active):not(.warming) video {
+  animation-play-state: paused;
 }
 @keyframes kenburns {
   0% {

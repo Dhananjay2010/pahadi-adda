@@ -16,6 +16,9 @@ const HOLD_MS = 9000;
 // read as a different pan per layer rather than the same zoom repeated.
 const ORIGINS = ["22% 30%", "78% 38%", "50% 74%", "30% 80%", "72% 22%", "42% 60%"];
 
+/** Where the background stops spending like a desktop. */
+const LIGHT_QUERY = "(max-width: 480px)";
+
 export default function PhotoHero() {
   const hour = useTimeOfDay();
   const { skyGradient, nightAlpha, glowAlpha } = getTimePalette(hour);
@@ -30,9 +33,27 @@ export default function PhotoHero() {
   const [primed, setPrimed] = useState<Set<number>>(
     () => new Set([index, (index + 1) % HERO_MEDIA.length]),
   );
+  // Phones swap the three video backgrounds for their poster stills. A
+  // second video pipeline running at 1280x720 purely as wallpaper, next to
+  // the one YouTube is already decoding for the song, is the most expensive
+  // thing on the page and the least looked at. Read once into initial state
+  // and then only from the change event, so nothing is set during an effect.
+  const [stillsOnly, setStillsOnly] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(LIGHT_QUERY).matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia(LIGHT_QUERY);
+    const onChange = (e: MediaQueryListEvent) => setStillsOnly(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
+      // Nothing to advance to while the page is hidden — and advancing
+      // anyway would prime another layer's download behind a locked screen,
+      // for a slideshow nobody is watching.
+      if (document.hidden) return;
       const next = (indexRef.current + 1) % HERO_MEDIA.length;
       indexRef.current = next;
       setIndex(next);
@@ -63,7 +84,12 @@ export default function PhotoHero() {
             key={media.id}
             media={media}
             active={i === index}
+            // The one coming next keeps breathing so it is already mid-pan
+            // when it fades in; the other ten stop. See the CSS note on
+            // .photo-layer img.
+            warming={i === (index + 1) % HERO_MEDIA.length}
             primed={primed.has(i)}
+            stillsOnly={stillsOnly}
             origin={ORIGINS[i % ORIGINS.length]}
           />
         ))}
@@ -79,13 +105,19 @@ export default function PhotoHero() {
 function HeroLayer({
   media,
   active,
+  warming,
   primed,
+  stillsOnly,
   origin,
 }: {
   media: HeroMedia;
   active: boolean;
+  /** Next in line — keeps its pan running so it fades in already moving. */
+  warming: boolean;
   /** False until this layer's turn is close enough to be worth downloading. */
   primed: boolean;
+  /** Render video backgrounds as their poster still (phones). */
+  stillsOnly: boolean;
   origin: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -93,21 +125,31 @@ function HeroLayer({
   // Only the active layer actually plays — the rest sit paused on their
   // poster/first frame so cycling through 8 layers doesn't mean decoding
   // multiple videos at once. Reduced-motion users get the still poster only.
+  //
+  // And nothing decodes while the page is hidden. Someone listening with the
+  // screen locked was still paying for a 720p background they could not see,
+  // which is the worst version of this trade there is.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (active && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
+    const sync = () => {
+      const still =
+        !active ||
+        document.hidden ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (still) video.pause();
+      else video.play().catch(() => {});
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
   }, [active]);
 
   // An un-primed layer is an empty div: it still holds its place in the
   // crossfade stack, it just hasn't fetched anything yet.
   return (
-    <div className={`photo-layer${active ? " active" : ""}`}>
-      {!primed ? null : media.type === "video" ? (
+    <div className={`photo-layer${active ? " active" : ""}${warming ? " warming" : ""}`}>
+      {!primed ? null : media.type === "video" && !stillsOnly ? (
         <video
           ref={videoRef}
           src={media.src}
@@ -120,7 +162,7 @@ function HeroLayer({
         />
       ) : (
         <img
-          src={media.src}
+          src={media.type === "video" ? media.poster : media.src}
           alt=""
           decoding="async"
           fetchPriority={active ? "high" : "low"}
